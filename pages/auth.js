@@ -16,23 +16,19 @@ export default function Auth() {
     setLoading(true);
     setMessage('');
 
-    const baseUrl =
-      typeof window !== 'undefined' && window.location.origin
-        ? window.location.origin
-        : 'https://mindmirror3d.vercel.app';
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://mindmirror3d.com';
 
-      // ✅ v2 signature: put emailRedirectTo under options
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${baseUrl}/auth/callback`,
-        },
-      });
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${baseUrl}/auth/callback`,
+      },
+    });
 
-      if (error) setMessage(error.message);
-      else setMessage('Check your email for a confirmation link!');
-      setLoading(false);
+    if (error) setMessage(error.message);
+    else setMessage('Check your email for a confirmation link!');
+    setLoading(false);
   };
 
   
