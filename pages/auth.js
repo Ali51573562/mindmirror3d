@@ -16,9 +16,27 @@ export default function Auth() {
   const handleSignUp = async () => {
     setLoading(true);
     setMessage('');
-    const { error } = await supabase.auth.signUp({ email, password });
-    if (error) setMessage(error.message);
-    else setMessage('Check your email for a confirmation link!');
+
+    // Determine where the user should be sent after clicking the email link
+    const baseUrl =
+      typeof window !== 'undefined' && window.location.origin
+        ? window.location.origin
+        : 'https://mindmirror3d.vercel.app'; // fallback for SSR
+
+    const { error } = await supabase.auth.signUp(
+      { email, password },
+      {
+        // 👇 this tells Supabase where to send users after they click the confirmation email
+        emailRedirectTo: `${baseUrl}/auth/callback`,
+      }
+    );
+
+    if (error) {
+      setMessage(error.message);
+    } else {
+      setMessage('Check your email for a confirmation link!');
+    }
+
     setLoading(false);
   };
 
