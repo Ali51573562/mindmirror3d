@@ -21,7 +21,7 @@ export default function AuthCallback() {
       const { data: userData } = await supabase.auth.getUser();
       if (userData?.user) {
         setMsg('Email confirmed! Redirecting...');
-        router.replace('/test-bigfive'); // or /profile — wherever you want them to go
+        router.replace('/profile'); // or /profile — wherever you want them to go
       } else {
         setMsg('Email confirmed! Please log in.');
         router.replace('/auth');

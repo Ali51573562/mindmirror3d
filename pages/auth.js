@@ -12,34 +12,30 @@ export default function Auth() {
   const [message, setMessage] = useState('');
   const [isSignUp, setIsSignUp] = useState(true); // Toggle between Sign Up / Login
 
-  // Sign up function
   const handleSignUp = async () => {
     setLoading(true);
     setMessage('');
 
-    // Determine where the user should be sent after clicking the email link
     const baseUrl =
       typeof window !== 'undefined' && window.location.origin
         ? window.location.origin
-        : 'https://mindmirror3d.vercel.app'; // fallback for SSR
+        : 'https://mindmirror3d.vercel.app';
 
-    const { error } = await supabase.auth.signUp(
-      { email, password },
-      {
-        // 👇 this tells Supabase where to send users after they click the confirmation email
-        emailRedirectTo: `${baseUrl}/auth/callback`,
-      }
-    );
+      // ✅ v2 signature: put emailRedirectTo under options
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${baseUrl}/auth/callback`,
+        },
+      });
 
-    if (error) {
-      setMessage(error.message);
-    } else {
-      setMessage('Check your email for a confirmation link!');
-    }
-
-    setLoading(false);
+      if (error) setMessage(error.message);
+      else setMessage('Check your email for a confirmation link!');
+      setLoading(false);
   };
 
+  
   // Sign in function
   const handleSignIn = async () => {
     setLoading(true);
