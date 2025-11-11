@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabaseClient';
 export default function AuthPage() {
   const router = useRouter();
 
-  const [mode, setMode] = useState('signup'); // 'signup' | 'login'
+  const [mode, setMode] = useState('login'); // 'signup' | 'login'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -64,7 +64,7 @@ export default function AuthPage() {
       }
 
       // Success: go to test (or profile if you prefer)
-      router.replace('/test-bigfive');
+      router.replace('/profile');
     } catch (e) {
       console.error('Login error:', e);
       setMessage('Something went wrong. Please try again.');
