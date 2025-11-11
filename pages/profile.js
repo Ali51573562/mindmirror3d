@@ -226,28 +226,6 @@ export default function Profile() {
                 <Link href="/payment" className="text-blue-600 hover:underline">
                   Manage payment
                 </Link>
-
-                {/* Optional: allow manual status progression for testing */}
-                <div className="flex items-center gap-2 text-xs">
-                  <button
-                    onClick={() => setOrderStatusRemote('design')}
-                    className="border px-2 py-1 rounded hover:bg-gray-50"
-                  >
-                    Mark: Design
-                  </button>
-                  <button
-                    onClick={() => setOrderStatusRemote('printing')}
-                    className="border px-2 py-1 rounded hover:bg-gray-50"
-                  >
-                    Mark: Printing
-                  </button>
-                  <button
-                    onClick={() => setOrderStatusRemote('shipped')}
-                    className="border px-2 py-1 rounded hover:bg-gray-50"
-                  >
-                    Mark: Shipped
-                  </button>
-                </div>
               </div>
             )}
           </div>
