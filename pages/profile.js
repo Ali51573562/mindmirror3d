@@ -255,7 +255,10 @@ export default function Profile() {
 
         {/* Personal Info*/}
         <section className="p-6 bg-white rounded-xl shadow mb-12">
-          <h2 className="text-xl font-semibold mb-4">Your Information</h2>
+          <div className="mb-4">
+            <div className="text-sm text-gray-500 mb-1">Step 5</div>
+            <div className="font-semibold text-xl text-gray-800">Your Information</div>
+          </div>
           <PersonalInfoForm user={user} />
         </section>
 
