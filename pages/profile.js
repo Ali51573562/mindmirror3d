@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabaseClient';
 import Navbar from '../components/Navbar';
 import Link from 'next/link';
+import PersonalInfoForm from '../components/PersonalInfoForm';
 
 export default function Profile() {
   const router = useRouter();
@@ -250,6 +251,12 @@ export default function Profile() {
               </div>
             )}
           </div>
+        </section>
+
+        {/* Personal Info*/}
+        <section className="p-6 bg-white rounded-xl shadow mb-12">
+          <h2 className="text-xl font-semibold mb-4">Your Information</h2>
+          <PersonalInfoForm user={user} />
         </section>
 
         {/* Account */}
