@@ -12,7 +12,7 @@ export default function Home() {
         <p className="text-lg md:text-xl text-gray-600 mb-10">
           Take two insightful personality tests to create a custom sculpture that reflects who you are.
         </p>
-        <Link href="/auth">
+        <Link href="/profile">
           <button className="bg-blue-600 text-white px-8 py-4 rounded-xl text-lg font-medium hover:bg-blue-700 transition">
             Start Your Journey
           </button>
@@ -56,7 +56,7 @@ export default function Home() {
         <h2 className="text-2xl font-semibold text-gray-700 mb-4">
           Ready to see yourself in a new dimension?
         </h2>
-        <Link href="/auth">
+        <Link href="/profile">
           <button className="bg-blue-600 text-white px-8 py-3 rounded-lg text-lg hover:bg-blue-700 transition">
             Start Now
           </button>

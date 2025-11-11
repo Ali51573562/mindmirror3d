@@ -41,7 +41,7 @@ export default function Auth() {
       setMessage(error.message);
     } else {
       setMessage('Logged in!');
-      router.push('/test-bigfive'); // Redirect to test page
+      router.push('/profile'); // Redirect to test page
     }
     setLoading(false);
   };

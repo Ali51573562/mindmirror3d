@@ -45,10 +45,8 @@ export default function Navbar() {
   }, []);
 
   // Destination for "Take the Test"
-  let testHref = '/auth';
-  if (isLoggedIn && !testsCompleted) testHref = '/test-bigfive';
-  if (isLoggedIn && testsCompleted) testHref = '/profile';
-
+  let testHref = '/profile';
+  
   // Destination for User icon
   const userHref = isLoggedIn ? '/profile' : '/auth';
 
@@ -57,7 +55,6 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center space-x-3">
-          <Image src="/mindmirror3d-logo.png" alt="MindMirror3D Logo" width={40} height={40} />
           <span className="text-2xl font-bold text-blue-600 tracking-wide">MindMirror3D</span>
         </Link>
 
