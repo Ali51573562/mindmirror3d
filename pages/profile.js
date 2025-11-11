@@ -142,7 +142,7 @@ export default function Profile() {
             <div className="font-semibold">Sign Up</div>
             <div className="mt-2 text-green-600 text-sm">Completed</div>
           </div>
-
+          
           {/* Step 2: Big Five */}
           <div className="p-4 bg-white rounded-xl shadow">
             <div className="text-sm text-gray-500 mb-1">Step 2</div>
@@ -153,7 +153,7 @@ export default function Profile() {
               ) : hasBigFive ? (
                 <span className="text-green-600">Completed</span>
               ) : (
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col items-start gap-2">
                   <span className="text-amber-600">Not completed</span>
                   <Link href="/test-bigfive">
                     <span className="bg-blue-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-blue-700 transition cursor-pointer">
@@ -175,7 +175,7 @@ export default function Profile() {
               ) : hasBasicNeeds ? (
                 <span className="text-green-600">Completed</span>
               ) : hasBigFive ? (
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col items-start gap-2">
                   <span className="text-amber-600">Not completed</span>
                   <Link href="/test-basicneeds">
                     <span className="bg-blue-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-blue-700 transition cursor-pointer">
