@@ -174,14 +174,6 @@ export default function TestBigFive() {
       <main className="max-w-2xl mx-auto p-6 mt-10">
         {!done ? (
           <>
-            {/* Intro (optional small blurb) */}
-            <div className="mb-6 text-gray-700">
-              <h1 className="text-2xl font-bold mb-2">Big Five Personality Test</h1>
-              <p className="text-sm">
-                Describe yourself as you generally are now. For each statement, choose from 1 (Very Inaccurate) to 5 (Very Accurate).
-              </p>
-            </div>
-
             {/* Progress */}
             <div className="mb-6">
               <div className="flex items-center justify-between mb-2">
