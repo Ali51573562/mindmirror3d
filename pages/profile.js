@@ -107,7 +107,7 @@ export default function Profile() {
 
   // 5) Place order -> set status, then go to payment
   const placeOrder = async () => {
-    await setOrderStatusRemote('received');
+    //await setOrderStatusRemote('received');
     router.push('/payment');
   };
 
