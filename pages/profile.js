@@ -107,7 +107,6 @@ export default function Profile() {
 
   // 5) Place order -> set status, then go to payment
   const placeOrder = async () => {
-    //await setOrderStatusRemote('received');
     router.push('/payment');
   };
 
@@ -211,7 +210,7 @@ export default function Profile() {
                   <button
                     onClick={placeOrder}
                     disabled={savingOrder}
-                    className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition disabled:opacity-50"
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
                   >
                     {savingOrder ? 'Processing…' : 'Order My Sculpture'}
                   </button>
