@@ -32,8 +32,8 @@ export default function PaymentPage() {
           Your Personalized MindMirror Sculpture
         </h1>
         <p className="text-lg text-gray-600 mb-8 leading-relaxed">
-          You’ve completed your personality journey — now we’ll turn your results into a
-          <span className="font-semibold text-gray-800"> one-of-a-kind 3D sculpture</span> that represents your inner self.
+          You’ve completed your personality journey — now we’ll turn your results into a 3D sculpture that
+          <span className="font-semibold text-gray-800"> represents your inner self</span>.
           Each piece is custom-designed and shipped with a printed guidebook explaining the meaning behind your form.
         </p>
 
