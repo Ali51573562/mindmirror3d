@@ -577,180 +577,217 @@ async function drawBasicNeedsPage(doc, row) {
 }
 
 
-
-
-
-
-
-
-// ---------- HEAD PAGE LAYOUT (IMAGE TOP-RIGHT, TEXT WRAPS) ----------
+// ---------- HEAD PAGE LAYOUT — OPTION 2 (SMART SPLIT AROUND IMAGE, NO STRETCH) ----------
 async function drawHeadPage(doc, row) {
-    const pageWidth = doc.internal.pageSize.getWidth();   // ~396 pt
-    const pageHeight = doc.internal.pageSize.getHeight(); // ~612 pt
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const inch = 72;
 
-    const TEXT_COLOR = '#1B2236';
+  const TEXT_COLOR = "#5A3A25"; // MindMirror brown
 
-    const scored = scoreBigFive(row.bigfive_answers || []);
-    if (!scored) {
-        doc.setFont('Helvetica', 'normal');
-        doc.setFontSize(14);
-        doc.setTextColor(TEXT_COLOR);
-        doc.text('Big Five test not completed or invalid answers.', 40, 80);
-        return;
+  const scored = scoreBigFive(row.bigfive_answers || []);
+  if (!scored) {
+    doc.setFont("Times", "normal");
+    doc.setFontSize(14);
+    doc.setTextColor(TEXT_COLOR);
+    doc.text("Big Five test not completed or invalid answers.", 40, 80);
+    return;
+  }
+
+  const bfPct = scored.pct;
+  const bfRaw = scored.raw;
+
+  // Trait order + tie-break (same as other pages)
+  const traitOrder = [
+    "Openness",
+    "Conscientiousness",
+    "Extraversion",
+    "Agreeableness",
+    "EmotionalStability",
+  ];
+
+  const rawKeyFor = (traitKey) => {
+    switch (traitKey) {
+      case "Openness":
+        return "openness";
+      case "Conscientiousness":
+        return "conscientiousness";
+      case "Extraversion":
+        return "extraversion";
+      case "Agreeableness":
+        return "agreeableness";
+      case "EmotionalStability":
+        return "neuroticism";
+      default:
+        return null;
     }
+  };
 
-    const bfPct = scored.pct;
-    const bfRaw = scored.raw;
+  const sortedTraits = traitOrder
+    .map((key) => {
+      const pct = bfPct[key] ?? 0;
+      const rawKey = rawKeyFor(key);
+      const raw = rawKey ? bfRaw[rawKey] ?? 0 : 0;
+      return { key, pct, raw };
+    })
+    .sort((a, b) => {
+      if (b.pct !== a.pct) return b.pct - a.pct;
+      if (b.raw !== a.raw) return b.raw - a.raw;
+      return traitOrder.indexOf(a.key) - traitOrder.indexOf(b.key);
+    });
 
-    // Same trait order + tiebreak as Big Five page
-    const traitOrder = [
-        'Openness',
-        'Conscientiousness',
-        'Extraversion',
-        'Agreeableness',
-        'EmotionalStability',
+  const prettyName = (key) =>
+    key === "EmotionalStability" ? "Emotional Stability" : key;
+
+  const top1Key = sortedTraits[0].key;
+  const top2Key = sortedTraits[1].key;
+  const top1Name = prettyName(top1Key);
+  const top2Name = prettyName(top2Key);
+
+  const top1Letter = traitKeyToLetter(top1Key);
+  const top2Letter = traitKeyToLetter(top2Key);
+  const headImagePath = `/booklet/Heads/${top1Letter}${top2Letter}-H.jpg`;
+
+  // ---------- TITLE ----------
+  doc.setFont("Times", "normal");
+  doc.setFontSize(24);
+  doc.setTextColor(TEXT_COLOR);
+  doc.text("Head of Your Sculpture", pageWidth / 2, 80, { align: "center" });
+
+  // ---------- SUBTITLE ----------
+  doc.setFontSize(11);
+  const subtitle = `Shaped by your ${top1Name} and ${top2Name} traits, this head reflects how you think, perceive, and relate to the world.`;
+  const subtitleLines = doc.splitTextToSize(subtitle, pageWidth - 120);
+  doc.text(subtitleLines, pageWidth / 2, 112, { align: "center" });
+
+  // ---------- LAYOUT CONSTANTS ----------
+  const marginLeft = 60;
+  const marginRight = 60;
+  const gap = 14;
+
+  // We choose a base width, and compute height from actual image ratio
+  const baseImageWidth = 2.1 * inch;
+  let imageWidth = baseImageWidth;
+  let imageHeight = baseImageWidth; // temporary, updated after we load the image
+
+  // Load image FIRST so we know its real ratio
+  let img = null;
+  try {
+    img = await loadImage(headImagePath);
+    const aspect = img.height / img.width; // real aspect ratio
+    imageWidth = baseImageWidth;
+    imageHeight = baseImageWidth * aspect; // correct height → no stretch
+  } catch (err) {
+    // if image fails, we just won't draw it; keep default square as fallback
+  }
+
+  // Place image in top-right, closer to subtitle
+  const imageX = pageWidth - marginRight - imageWidth;
+  const imageY = 150; // higher on the page, nearer the subtitle
+
+  const narrowTextWidth = imageX - marginLeft - gap; // column to the left of image
+  const fullTextWidth = pageWidth - marginLeft - marginRight;
+
+  const imageBottomY = imageY + imageHeight;
+
+  // ---------- LOAD HEAD DESCRIPTIONS ----------
+  const headDescriptions = await loadHeadDescriptions();
+  const headKey = `${top1Letter}${top2Letter}-H`; // e.g. "AO-H"
+  let symbolTexts = headDescriptions[headKey] || [];
+
+  // Use up to 3 paragraphs
+  symbolTexts = symbolTexts.slice(0, 3);
+  if (symbolTexts.length === 0) {
+    symbolTexts = [
+      `This head combines shapes and details that capture your ${top1Name} and ${top2Name} qualities.`,
+      "It symbolizes how you think, process experiences, and emotionally orient yourself in the world.",
     ];
+  }
 
-    const rawKeyFor = (traitKey) => {
-        switch (traitKey) {
-            case 'Openness':
-                return 'openness';
-            case 'Conscientiousness':
-                return 'conscientiousness';
-            case 'Extraversion':
-                return 'extraversion';
-            case 'Agreeableness':
-                return 'agreeableness';
-            case 'EmotionalStability':
-                return 'neuroticism'; // raw still stored as neuroticism
-            default:
-                return null;
-        }
-    };
+  // ---------- TEXT SETUP ----------
+  const bodyFontSize = 12.5;
+  const lineHeightFactor = 1.4;
+  const lineHeight = bodyFontSize * lineHeightFactor;
 
-    const sortedTraits = traitOrder
-        .map((key) => {
-            const pct = bfPct[key] ?? 0;
-            const rawKey = rawKeyFor(key);
-            const raw = rawKey ? bfRaw[rawKey] ?? 0 : 0;
-            return { key, pct, raw };
-        })
-        .sort((a, b) => {
-            if (b.pct !== a.pct) return b.pct - a.pct;       // 1) higher %
-            if (b.raw !== a.raw) return b.raw - a.raw;       // 2) higher raw
-            return traitOrder.indexOf(a.key) - traitOrder.indexOf(b.key); // 3) order
-        });
+  doc.setFont("Times", "normal");
+  doc.setFontSize(bodyFontSize);
+  doc.setTextColor(TEXT_COLOR);
 
-    const top1Key = sortedTraits[0].key;
-    const top2Key = sortedTraits[1].key;
+  // ---------- FIRST PARAGRAPH: SMART SPLIT NEXT TO IMAGE ----------
+  const firstPara = symbolTexts[0];
+  const allFirstLines = doc.splitTextToSize(firstPara, narrowTextWidth);
 
-    const prettyName = (key) =>
-        key === 'EmotionalStability' ? 'Emotional Stability' : key;
+  const columnTopY = imageY + 4; // starts near top of image band 
+  // // how many lines fit roughly in the image height
+  const linesToImageBottom = Math.floor(imageHeight / lineHeight);
+  
+  // allow the text to go at least 1 line below the image
+  let maxLinesInColumn = linesToImageBottom + 1;
+  
+  // never use more lines than we actually have
+  maxLinesInColumn = Math.min(maxLinesInColumn, allFirstLines.length);
 
-    const top1Name = prettyName(top1Key);
-    const top2Name = prettyName(top2Key);
+  const firstLinesInColumn = allFirstLines.slice(0, maxLinesInColumn);
+  const overflowLines = allFirstLines.slice(maxLinesInColumn); // goes below image
 
-    const top1Letter = traitKeyToLetter(top1Key);
-    const top2Letter = traitKeyToLetter(top2Key);
+  // Draw first chunk next to image
+  doc.text(firstLinesInColumn, marginLeft, columnTopY, {
+    align: "left",
+    lineHeightFactor,
+  });
 
-    const headImagePath = `/booklet/Heads/${top1Letter}${top2Letter}-H.jpg`;
+  const firstColumnHeight =
+    (firstLinesInColumn.length - 1) * lineHeight;
+  const firstBottomY = columnTopY + firstColumnHeight;
 
-    // ----- Title -----
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(20);
-    doc.setTextColor(TEXT_COLOR);
-    doc.text('Head of Your Sculpture', pageWidth / 2, 60, { align: 'center' });
+  // ---------- BUILD PARAGRAPHS FOR FULL-WIDTH AREA ----------
+  const remainingParas = symbolTexts.slice(1);
+  const belowParagraphs = [];
 
-    // ----- Layout constants -----
-    const marginLeft = 40;
-    const marginRight = 40;
+  if (overflowLines.length > 0) {
+    // join overflow lines back into one paragraph for smoother reading
+    belowParagraphs.push(overflowLines.join(" "));
+  }
 
-    const titleBottomY = 60;          // same as title Y
-    const imageMaxWidth = 130;        // max width for the head
-    const gap = 12;                   // gap between image and text
+  belowParagraphs.push(...remainingParas);
 
-    const imageX = pageWidth - marginRight - imageMaxWidth;
-    const imageY = titleBottomY + 20; // under the title
+  // starting Y for full-width text = just below the lower of image / first column
+  // // We want the continuation to feel like next line of the same paragraph
+  // so we start roughly one line below the last column line,
+  // but we also make sure we don’t overlap the image if the column ended higher.
+  let minStartBelowImage = imageBottomY + lineHeight * 0.3;      // small safety gap
+  let continuationStart = firstBottomY + lineHeight;             // like "next line"
+  
+  let fullStartY = Math.max(continuationStart, minStartBelowImage);
+  
 
-    // Text widths
-    const fullTextWidth = pageWidth - marginLeft - marginRight;
-    const narrowTextWidth = imageX - gap - marginLeft; // left of image
 
-    // ----- Load head descriptions from heads.txt -----
-    const headDescriptions = await loadHeadDescriptions();
-    const headKey = `${top1Letter}${top2Letter}-H`; // e.g. "AO-H"
-    const symbolTextsRaw = headDescriptions[headKey] || [];
-
-    let symbolTexts = symbolTextsRaw.slice(0, 3);
-    if (symbolTexts.length === 0) {
-        symbolTexts = [
-            `This head combines shapes and details that reflect your ${top1Name} and ${top2Name} traits.`,
-            'It symbolizes how you think, perceive, and emotionally relate to the world.',
-        ];
-    }
-
-    doc.setFont('Helvetica', 'normal');
-    doc.setFontSize(11);
-    doc.setTextColor(TEXT_COLOR);
-
-    const fontSize = doc.getFontSize();
-    const lineHeightFactor = 1.3;
-    const lineHeight = fontSize * lineHeightFactor;
-    const bulletSpacing = 12;
-
-    // ----- Wrap text for bullet 1 (narrow column on the left of the image) -----
-    const bullet1Text = `• ${symbolTexts[0]}`;
-    const bullet1Lines = doc.splitTextToSize(bullet1Text, narrowTextWidth);
-
-    const bullet1StartY = imageY + 10; // start roughly near top of image
-
-    doc.text(bullet1Lines, marginLeft, bullet1StartY, {
-        align: 'left',
-        lineHeightFactor,
+  belowParagraphs.forEach((para) => {
+    const lines = doc.splitTextToSize(para, fullTextWidth);
+    doc.text(lines, marginLeft, fullStartY, {
+      align: "left",
+      lineHeightFactor,
     });
+    fullStartY += lines.length * lineHeight + lineHeight; 
+    // or, if you want VERY tight paragraphs:
+    // fullStartY += lines.length * lineHeight;
 
-    const bullet1Height =
-        (bullet1Lines.length - 1) * lineHeight; // extra height after first line
-    const bullet1BottomY = bullet1StartY + bullet1Height;
+  });
 
-    // ----- Prepare bullets 2 & 3 (full width) -----
-    const remainingBullets = symbolTexts.slice(1).map((t) => `• ${t}`);
-
-    // Base line to start full-width text = under image OR under bullet 1,
-    // whichever is lower, plus some gap
-    let fullStartY = Math.max(imageY + imageMaxWidth, bullet1BottomY) + 24;
-
-    // Draw bullets 2 and 3 full width under the image
-    remainingBullets.forEach((text) => {
-        const lines = doc.splitTextToSize(text, fullTextWidth);
-        doc.text(lines, marginLeft, fullStartY, {
-            align: 'left',
-            lineHeightFactor,
-        });
-        fullStartY += lines.length * lineHeight + bulletSpacing;
-    });
-
-    // ----- Draw image last (so text isn't affected) -----
-    try {
-        const img = await loadImage(headImagePath);
-        // Preserve aspect ratio
-        const aspect = img.height / img.width;
-        let drawWidth = imageMaxWidth;
-        let drawHeight = drawWidth * aspect;
-
-        // If it's ridiculously tall, clamp it (shouldn't happen often)
-        const maxImageHeight = pageHeight - imageY - 80;
-        if (drawHeight > maxImageHeight) {
-            drawHeight = maxImageHeight;
-            drawWidth = drawHeight / aspect;
-        }
-
-        const adjustedImageX = pageWidth - marginRight - drawWidth;
-        doc.addImage(img, 'JPEG', adjustedImageX, imageY, drawWidth, drawHeight);
-    } catch (err) {
-        // If image missing, just skip it silently
-    }
+  // ---------- DRAW IMAGE LAST (TOP-RIGHT, NO STRETCH) ----------
+  if (img) {
+    doc.addImage(img, "JPEG", imageX, imageY, imageWidth, imageHeight);
+  }
 }
+
+
+
+
+
+
+
+
+
 
 // ---------- BODY PAGE LAYOUT (IMAGE TOP-RIGHT, TEXT WRAPS, 4 SYMBOLS) ----------
 async function drawBodyPage(doc, row) {
