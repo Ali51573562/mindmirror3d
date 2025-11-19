@@ -10,6 +10,41 @@ const ADMIN_EMAIL = 'ali51573562@gmail.com';
 const safe = (value) =>
   value === null || value === undefined || value === '' ? '—' : value;
 
+// Helper to load an image from /public for jsPDF
+function loadImage(src) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = src;
+    });
+}
+
+// Helper: convert an SVG in /public to a PNG data URL (for jsPDF addImage)
+async function svgToPngDataUrl(svgUrl, width = 300, height = 300) {
+    const response = await fetch(svgUrl);
+    const svgText = await response.text();
+
+    return new Promise((resolve) => {
+        const img = new Image();
+        const svgBlob = new Blob([svgText], { type: "image/svg+xml" });
+        const url = URL.createObjectURL(svgBlob);
+
+        img.onload = () => {
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, width, height);
+            const pngData = canvas.toDataURL("image/png");
+            URL.revokeObjectURL(url);
+            resolve(pngData);
+        };
+
+        img.src = url;
+    });
+}
+
 
 
 // --------- LOAD HEAD DESCRIPTIONS (heads.txt) ----------
@@ -289,339 +324,264 @@ function scoreBasicNeeds(arr) {
 
 
 // ---------- BIG FIVE PAGE LAYOUT (PAGE #2) ----------
-function drawBigFivePage(doc, row) {
-  const pageWidth = doc.internal.pageSize.getWidth(); // 396 pt
-  const pageHeight = doc.internal.pageSize.getHeight(); // 612 pt
+// ---------- BIG FIVE PAGE LAYOUT — TABLE STYLE (Mockup) ----------
+async function drawBigFivePage(doc, row) {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const inch = 72;
 
-  const TEXT_COLOR = '#1B2236';
-  const BAR_COLOR = '#FFA860';
+  const TEXT_COLOR = "#5A3A25"; // MindMirror brown
 
   const scored = scoreBigFive(row.bigfive_answers || []);
   if (!scored) {
-    doc.setFont('Helvetica', 'normal');
+    doc.setFont("Times", "normal");
     doc.setFontSize(14);
     doc.setTextColor(TEXT_COLOR);
-    doc.text('Big Five test not completed or invalid answers.', 40, 80);
+    doc.text("Big Five test not completed or invalid answers.", 40, 80);
     return;
   }
 
-  // Percent scores (already normalized 0–100)
   const bfPct = scored.pct;
-  // Raw scores (10–50) for tiebreaking
   const bfRaw = scored.raw;
 
-  // Canonical trait order for final tiebreak: O > C > E > A > ES
   const traitOrder = [
-    'Openness',
-    'Conscientiousness',
-    'Extraversion',
-    'Agreeableness',
-    'EmotionalStability', // key name from scoreBigFive()
+    "Agreeableness",
+    "Openness",
+    "EmotionalStability",
+    "Conscientiousness",
+    "Extraversion",
   ];
 
-  // Map pct-key → raw-key for raw-score lookup
-  const rawKeyFor = (traitKey) => {
-    switch (traitKey) {
-      case 'Openness':
-        return 'openness';
-      case 'Conscientiousness':
-        return 'conscientiousness';
-      case 'Extraversion':
-        return 'extraversion';
-      case 'Agreeableness':
-        return 'agreeableness';
-      case 'EmotionalStability':
-        // raw score stored as neuroticism inside scoreBigFive()
-        return 'neuroticism';
-      default:
-        return null;
-    }
+  // Map pct/raw keys
+  const pctKey = {
+    Agreeableness: "Agreeableness",
+    Openness: "Openness",
+    EmotionalStability: "EmotionalStability",
+    Conscientiousness: "Conscientiousness",
+    Extraversion: "Extraversion",
+  };
+  const rawKey = {
+    Agreeableness: "agreeableness",
+    Openness: "openness",
+    EmotionalStability: "neuroticism",
+    Conscientiousness: "conscientiousness",
+    Extraversion: "extraversion",
   };
 
-  // Build sorted list with pct + raw + full tiebreak logic
-  const sortedTraits = traitOrder
-    .map((key) => {
-      const pct = bfPct[key] ?? 0;
-      const rawKey = rawKeyFor(key);
-      const raw = rawKey ? bfRaw[rawKey] ?? 0 : 0;
-      return { key, pct, raw };
-    })
+  // Sort by pct → raw, then keep the mockup order for equal values
+  const traits = traitOrder
+    .map((key) => ({
+      key,
+      label: key === "EmotionalStability" ? "Emotional Stability" : key,
+      pct: bfPct[pctKey[key]] ?? 0,
+      raw: bfRaw[rawKey[key]] ?? 0,
+    }))
     .sort((a, b) => {
-      // 1) Higher percentage first
       if (b.pct !== a.pct) return b.pct - a.pct;
-      // 2) If tie, higher raw score first
       if (b.raw !== a.raw) return b.raw - a.raw;
-      // 3) If still tie, fall back to canonical OCEAS ordering
       return traitOrder.indexOf(a.key) - traitOrder.indexOf(b.key);
     });
 
-    // Adjust percentages so there are no ties in the chart
-    for (let i = 1; i < sortedTraits.length; i++) {
-      if (sortedTraits[i].pct >= sortedTraits[i - 1].pct) {
-        // Nudge this trait down to be 1 point less than the one above it
-        sortedTraits[i].pct = Math.max(0, sortedTraits[i - 1].pct - 1);
-    }
-    }
+  const top1 = traits[0].label;
+  const top2 = traits[1].label;
 
-
-  // Pretty label for display
-  const prettyName = (key) =>
-    key === 'EmotionalStability' ? 'Emotional Stability' : key;
-
-  // Top 3 traits after full tie-breaking
-  const top1 = prettyName(sortedTraits[0].key);
-  const top2 = prettyName(sortedTraits[1].key);
-  const top3 = prettyName(sortedTraits[2].key); // (top3 unused for now, but available)
-
-  // Completion date from created_at
-  let completionDate = 'the day you took the test';
-  if (row.created_at) {
-    try {
-      const d = new Date(row.created_at);
-      completionDate = d.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      });
-    } catch (e) {
-      completionDate = row.created_at;
-    }
-  }
-
-  // ----- Title -----
-  doc.setFont('Helvetica', 'bold');
-  doc.setFontSize(20);
+  // ---------- TITLE ----------
+  doc.setFont("Times", "normal");
+  doc.setFontSize(24);
   doc.setTextColor(TEXT_COLOR);
-  doc.text('Big Five Personality Results', pageWidth / 2, 60, {
-    align: 'center',
+  doc.text("Big Five Personality", pageWidth / 2, 80, { align: "center" });
+  doc.text("Results", pageWidth / 2, 108, { align: "center" });
+
+  // ---------- SUBTITLE ----------
+  doc.setFontSize(11.5);
+  const subtitle =
+    "Based on the Big Five assessment you completed, these are your personality score results.";
+  const subtitleLines = doc.splitTextToSize(subtitle, pageWidth - 120);
+  doc.text(subtitleLines, pageWidth / 2, 138, {
+    align: "center",
   });
 
-  // ----- Subtitle (two lines) -----
-  doc.setFont('Helvetica', 'normal');
-  doc.setFontSize(11);
-  doc.text(
-    `Based on the online test you took on ${completionDate},`,
-    pageWidth / 2,
-    82,
-    { align: 'center' }
-  );
-  doc.text('this is your result scores.', pageWidth / 2, 98, {
-    align: 'center',
+  // ---------- TRAIT TABLE ----------
+  const leftX = 70;
+  const rightX = pageWidth - 70;
+  let y = 190;
+  const rowGap = 34;
+
+  doc.setFontSize(15);
+  traits.forEach((t) => {
+    // trait name
+    doc.text(t.label, leftX, y);
+
+    // percentage right-aligned
+    const pctText = `${t.pct}%`;
+    doc.text(pctText, rightX, y, { align: "right" });
+
+    // underline
+    const lineY = y + 10;
+    doc.setLineWidth(0.6);
+    doc.setDrawColor(TEXT_COLOR);
+    doc.line(leftX, lineY, rightX, lineY);
+
+    y += rowGap;
   });
 
-  // ----- Chart layout -----
-  let y = 150;
-  const barHeight = 26;
-  const gap = 22;
-  const left = 40;
-  const right = pageWidth - 40;
-  const maxBarWidth = right - left;
+  // ---------- DOMINANT TRAITS ----------
+  y += 20;
+  doc.setFontSize(15);
+  doc.text("Your Dominant Traits", pageWidth / 2, y, { align: "center" });
 
-  doc.setFont('Helvetica', 'normal');
-  doc.setFontSize(12);
+  y += 28;
+  doc.setFontSize(18);
+  doc.text(`${top1} · ${top2}`, pageWidth / 2, y, { align: "center" });
 
-  sortedTraits.forEach(({ key, pct }) => {
-    const trait = prettyName(key);
-    const width = (pct / 100) * maxBarWidth;
+  // ---------- EXPLANATION PARAGRAPH ----------
+  y += 32;
+  doc.setFontSize(12.5);
 
-    // Draw bar
-    doc.setFillColor(BAR_COLOR);
-    doc.roundedRect(left, y, width, barHeight, 6, 6, 'F');
+  const para = `Your personality is primarily shaped by ${top1} and ${top2}, which strongly influence how you think, relate, and make decisions.`;
+  const paraLines = doc.splitTextToSize(para, pageWidth - 120);
 
-    const textY = y + barHeight / 2 + 4;
-    doc.setTextColor(TEXT_COLOR);
-
-    const pctText = `${pct}%`;
-    const pctWidth = doc.getTextWidth(pctText);
-    const traitWidth = doc.getTextWidth(trait);
-
-    // Decide if bar is long enough to hold both texts
-    const neededWidthInside = traitWidth + pctWidth + 40; // padding
-
-    // Always draw trait text inside left
-    doc.text(trait, left + 8, textY);
-
-    if (width >= neededWidthInside) {
-      // Enough space: both label and percent INSIDE the bar
-      doc.text(pctText, left + width - 8 - pctWidth, textY);
-    } else {
-      // Not enough space: move percent OUTSIDE to the right of the bar
-      doc.text(pctText, left + width + 10, textY);
-    }
-
-    y += barHeight + gap;
+  doc.text(paraLines, pageWidth / 2, y, {
+    align: "center",
+    lineHeightFactor: 1.4,
   });
 
-  // ----- Summary text -----
-  doc.setFontSize(12);
-  doc.setTextColor(TEXT_COLOR);
-  const summaryLines = [
-    `Based on big 5 test you are a ${top1} and ${top2} person.`,
-    'This trait is outstanding in your personality.',
-    'So, these are your main traits.',
-  ];
-  doc.text(summaryLines, pageWidth / 2, pageHeight - 80, {
-    align: 'center',
-  });
-
-  // Footer
-  doc.setFont('Helvetica', 'italic');
-  doc.setFontSize(9);
-  doc.setTextColor('#777777');
-  doc.text('MindMirror3D', pageWidth / 2, pageHeight - 40, {
-    align: 'center',
-  });
+  // (Optional) symbol at bottom center – uncomment if you want it:
+  // const symbol = await loadImage("/symbol-only.png");
+  // if (symbol) {
+  //   const symbolSize = 0.4 * inch;
+  //   const sx = (pageWidth - symbolSize) / 2;
+  //   const sy = pageHeight - 1.1 * inch;
+  //   doc.addImage(symbol, "PNG", sx, sy, symbolSize, symbolSize);
+  // }
 }
 
-// ---------- BASIC NEEDS PAGE LAYOUT (PAGE #3) ----------
-function drawBasicNeedsPage(doc, row) {
-  const pageWidth = doc.internal.pageSize.getWidth();  // 396 pt
-  const pageHeight = doc.internal.pageSize.getHeight(); // 612 pt
 
-  const TEXT_COLOR = '#1B2236';
-  const BAR_COLOR = '#FFA860';
+// ---------- BASIC NEEDS PAGE LAYOUT — TABLE STYLE ----------
+async function drawBasicNeedsPage(doc, row) {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const inch = 72;
+
+  const TEXT_COLOR = "#5A3A25"; // MindMirror brown
 
   const bn = scoreBasicNeeds(row.basicneeds_answers || []);
   if (!bn) {
-    doc.setFont('Helvetica', 'normal');
+    doc.setFont("Times", "normal");
     doc.setFontSize(14);
     doc.setTextColor(TEXT_COLOR);
-    doc.text('Basic Needs test not completed or invalid answers.', 40, 80);
+    doc.text("Basic Needs test not completed or invalid answers.", 40, 80);
     return;
   }
 
-  // Build list with pct + raw for tie-breaking
-  let needs = [
-    { key: 'Survival', pct: bn.survival_pct, raw: bn.survival },
-    { key: 'Love', pct: bn.love_pct, raw: bn.love },
-    { key: 'Freedom', pct: bn.freedom_pct, raw: bn.freedom },
-    { key: 'Power', pct: bn.power_pct, raw: bn.power },
-    { key: 'Fun', pct: bn.fun_pct, raw: bn.fun },
-  ];
+  // Build needs list: Survival, Love, Freedom, Power, Fun
+  const needOrder = ["Survival", "Love", "Freedom", "Power", "Fun"];
 
-  // Canonical order for final tie break
-  const needOrder = ['Survival', 'Love', 'Freedom', 'Power', 'Fun'];
-
-  // Sort with: pct → raw → canonical order
-  needs = needs.sort((a, b) => {
-    // 1) Higher percentage first
-    if (b.pct !== a.pct) return b.pct - a.pct;
-    // 2) If tie, higher raw score first
-    if (b.raw !== a.raw) return b.raw - a.raw;
-    // 3) If still tie, canonical need order
-    return needOrder.indexOf(a.key) - needOrder.indexOf(b.key);
-  });
-
-  // Adjust displayed percentages so there are no ties,
-  // while staying roughly in the 20–100 range
-  if (needs.length > 1) {
-    // Step 1: enforce strictly descending
-    for (let i = 1; i < needs.length; i++) {
-      if (needs[i].pct >= needs[i - 1].pct) {
-        needs[i].pct = needs[i - 1].pct - 1;
+  const needs = needOrder
+    .map((key) => {
+      switch (key) {
+        case "Survival":
+          return { key, label: "Survival", pct: bn.survival_pct ?? 0, raw: bn.survival ?? 0 };
+        case "Love":
+          return { key, label: "Love", pct: bn.love_pct ?? 0, raw: bn.love ?? 0 };
+        case "Freedom":
+          return { key, label: "Freedom", pct: bn.freedom_pct ?? 0, raw: bn.freedom ?? 0 };
+        case "Power":
+          return { key, label: "Power", pct: bn.power_pct ?? 0, raw: bn.power ?? 0 };
+        case "Fun":
+          return { key, label: "Fun", pct: bn.fun_pct ?? 0, raw: bn.fun ?? 0 };
+        default:
+          return { key, label: key, pct: 0, raw: 0 };
       }
-    }
+    })
+    .sort((a, b) => {
+      if (b.pct !== a.pct) return b.pct - a.pct;       // higher percentage first
+      if (b.raw !== a.raw) return b.raw - a.raw;       // then higher raw sum
+      return needOrder.indexOf(a.key) - needOrder.indexOf(b.key); // then canonical order
+    });
 
-    // Step 2: if anything dropped below 20, shift everything up together
-    let minPct = needs[0].pct;
-    for (let i = 1; i < needs.length; i++) {
-      if (needs[i].pct < minPct) {
-        minPct = needs[i].pct;
-      }
-    }
+  const top1 = needs[0].label;
+  const top2 = needs[1].label;
 
-    if (minPct < 20) {
-      const shift = 20 - minPct;
-      for (let i = 0; i < needs.length; i++) {
-        needs[i].pct = Math.min(100, needs[i].pct + shift);
-      }
-    }
-  }
-
-  // Top 3 needs after full tie-breaking (in case you want them)
-  const top1 = needs[0].key;
-  const top2 = needs[1].key;
-  const top3 = needs[2]?.key;
-
-  // ----- Title -----
-  doc.setFont('Helvetica', 'bold');
-  doc.setFontSize(20);
+  // ---------- TITLE ----------
+  doc.setFont("Times", "normal");
+  doc.setFontSize(24);
   doc.setTextColor(TEXT_COLOR);
-  doc.text('Basic Needs Results', pageWidth / 2, 60, {
-    align: 'center',
+  doc.text("Basic Needs", pageWidth / 2, 80, { align: "center" });
+  doc.text("Results", pageWidth / 2, 108, { align: "center" });
+
+  // ---------- SUBTITLE ----------
+  doc.setFontSize(11.5);
+  const subtitle =
+    "These results show which core psychological needs are most important for your sense of balance and fulfillment.";
+  const subtitleLines = doc.splitTextToSize(subtitle, pageWidth - 120);
+  doc.text(subtitleLines, pageWidth / 2, 138, {
+    align: "center",
   });
 
-  // ----- Subtitle -----
-  doc.setFont('Helvetica', 'normal');
-  doc.setFontSize(11);
-  doc.text(
-    'Your core psychological needs shown as percentages.',
-    pageWidth / 2,
-    82,
-    { align: 'center' }
-  );
+  // ---------- NEEDS TABLE ----------
+  const leftX = 70;
+  const rightX = pageWidth - 70;
+  let y = 190;
+  const rowGap = 34;
 
-  // ----- Chart layout -----
-  let y = 150;
-  const barHeight = 26;
-  const gap = 22;
-  const left = 40;
-  const right = pageWidth - 40;
-  const maxBarWidth = right - left;
-
-  doc.setFont('Helvetica', 'normal');
-  doc.setFontSize(12);
-
-  needs.forEach(({ key, pct }) => {
-    const label = key;
-    const width = (pct / 100) * maxBarWidth;
-
-    // Bar
-    doc.setFillColor(BAR_COLOR);
-    doc.roundedRect(left, y, width, barHeight, 6, 6, 'F');
-
-    const textY = y + barHeight / 2 + 4;
-    doc.setTextColor(TEXT_COLOR);
-
-    const pctText = `${pct}%`;
-    const pctWidth = doc.getTextWidth(pctText);
-    const labelWidth = doc.getTextWidth(label);
-
-    const neededWidthInside = labelWidth + pctWidth + 40; // padding
-
-    // Always draw label text inside bar on the left
-    doc.text(label, left + 8, textY);
-
-    if (width >= neededWidthInside) {
-      // Enough space: percent inside right
-      doc.text(pctText, left + width - 8 - pctWidth, textY);
-    } else {
-      // Not enough space: percent outside bar to the right
-      doc.text(pctText, left + width + 10, textY);
-    }
-
-    y += barHeight + gap;
-  });
-
-  // ----- Summary -----
-  doc.setFontSize(12);
+  doc.setFontSize(15);
   doc.setTextColor(TEXT_COLOR);
-  const summaryLines = [
-    `Based on the Basic Needs test, your strongest needs are ${top1} and ${top2}.`,
-    'These needs are especially important in how you feel balanced and fulfilled.',
-  ];
-  doc.text(summaryLines, pageWidth / 2, pageHeight - 80, {
-    align: 'center',
+
+  needs.forEach((n) => {
+    // need name
+    doc.text(n.label, leftX, y);
+
+    // percentage right-aligned
+    const pctText = `${n.pct}%`;
+    doc.text(pctText, rightX, y, { align: "right" });
+
+    // underline
+    const lineY = y + 10;
+    doc.setLineWidth(0.6);
+    doc.setDrawColor(TEXT_COLOR);
+    doc.line(leftX, lineY, rightX, lineY);
+
+    y += rowGap;
   });
 
-  // Footer
-  doc.setFont('Helvetica', 'italic');
-  doc.setFontSize(9);
-  doc.setTextColor('#777777');
-  doc.text('MindMirror3D', pageWidth / 2, pageHeight - 40, {
-    align: 'center',
+  // ---------- DOMINANT NEEDS ----------
+  y += 20;
+  doc.setFontSize(15);
+  doc.text("Your Dominant Needs", pageWidth / 2, y, { align: "center" });
+
+  y += 28;
+  doc.setFontSize(18);
+  doc.text(`${top1} · ${top2}`, pageWidth / 2, y, { align: "center" });
+
+  // ---------- EXPLANATION PARAGRAPH ----------
+  y += 32;
+  doc.setFontSize(12.5);
+
+  const para = `Your well-being is especially influenced by your needs for ${top1} and ${top2}. When these needs are met, you tend to feel more grounded, motivated, and emotionally balanced.`;
+  const paraLines = doc.splitTextToSize(para, pageWidth - 120);
+
+  doc.text(paraLines, pageWidth / 2, y, {
+    align: "center",
+    lineHeightFactor: 1.4,
   });
+
+  // (Optional) symbol at bottom center – uncomment if you want it:
+  // const symbol = await loadImage("/symbol-only.png");
+  // if (symbol) {
+  //   const symbolSize = 0.4 * inch;
+  //   const sx = (pageWidth - symbolSize) / 2;
+  //   const sy = pageHeight - 1.1 * inch;
+  //   doc.addImage(symbol, "PNG", sx, sy, symbolSize, symbolSize);
+  // }
 }
+
+
+
+
+
+
+
 
 // ---------- HEAD PAGE LAYOUT (IMAGE TOP-RIGHT, TEXT WRAPS) ----------
 async function drawHeadPage(doc, row) {
@@ -1121,15 +1081,99 @@ async function drawLegPage(doc, row) {
 }
 
 
-// Helper to load an image from /public for jsPDF
-function loadImage(src) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = src;
-  });
+// ---------- THANK YOU PAGE (Draft 13) ----------
+async function addThankYouPage(doc, userName) {
+    const pageWidth = doc.internal.pageSize.getWidth();   // 396 pt
+    const pageHeight = doc.internal.pageSize.getHeight(); // 612 pt
+
+    const inch = 72;
+    const leftMargin = 0.9 * inch;
+    const rightMargin = 0.9 * inch;
+    const usableWidth = pageWidth - leftMargin - rightMargin;
+
+    const TEXT_COLOR = "#5A3A25";
+    const BG_COLOR = "#F5EFE6";
+
+    const nameToUse = userName || "Friend";
+
+    // Load PNG logo from /public
+    const logoImg = await loadImage("/symbol-only.png");
+
+    // New page
+    doc.addPage();
+
+    // Background
+    doc.setFillColor(BG_COLOR);
+    doc.rect(0, 0, pageWidth, pageHeight, "F");
+
+    // ---------------------------------------
+    // 1. LOGO — slightly larger, centered
+    // ---------------------------------------
+    const logoSize = 0.8 * inch; // was 0.7", now larger
+    const logoX = (pageWidth - logoSize) / 2; // centered
+    const logoY = 1.0 * inch;                // keep vertical reference
+
+    if (logoImg) {
+        doc.addImage(logoImg, "PNG", logoX, logoY, logoSize, logoSize);
+    }
+
+    // ---------------------------------------
+    // 2. TITLE ("THANK YOU")
+    // ---------------------------------------
+    let y = logoY + logoSize + 0.32 * inch; // space under logo
+
+    doc.setFont("Times", "normal");
+    doc.setFontSize(26);
+    doc.setTextColor(TEXT_COLOR);
+    doc.text("THANK YOU", pageWidth / 2, y, { align: "center" });
+
+    // everything under THANK YOU goes a bit lower (+0.14")
+    y += 0.38 * inch + 0.14 * inch;
+
+    // ---------------------------------------
+    // 3. BODY TEXT
+    // ---------------------------------------
+    doc.setFont("Times", "normal");
+    doc.setFontSize(12.5);
+
+    const body =
+        `Dear ${nameToUse},\n\n` +
+        "Thank you for being part of the MindMirror3D journey.\n\n" +
+        "Your sculpture and booklet were created with care, precision, and deep respect for who you are. " +
+        "This is more than a report—it's a reflection of your inner landscape, your strengths, " +
+        "and your unique way of moving through the world.\n\n" +
+        "We hope this serves as a meaningful guide for self-understanding, connection, and growth.";
+
+    const bodyLineHeight = 17.4; // a bit more open
+    const bodyLines = doc.splitTextToSize(body, usableWidth);
+
+    doc.text(bodyLines, leftMargin, y, {
+        lineHeightFactor: bodyLineHeight / 12.5,
+    });
+
+    y += bodyLines.length * bodyLineHeight;
+
+    // ---------------------------------------
+    // 4. CLOSING
+    // ---------------------------------------
+    // extra breathing space before closing
+    y += 40; // slightly more than before
+
+    doc.setFont("Times", "normal");
+    doc.setFontSize(12.5);
+    doc.text("— MindMirror3D", pageWidth - rightMargin, y, { align: "right" });
+
+    // ---------------------------------------
+    // 5. BOTTOM LINE (0.9" from bottom)
+    // ---------------------------------------
+    const lineY = pageHeight - 0.9 * inch;
+
+    doc.setDrawColor(TEXT_COLOR);
+    doc.setLineWidth(1);
+    doc.line(leftMargin, lineY, pageWidth - rightMargin, lineY);
 }
+
+
 
 // ---------- BOOKLET PDF GENERATION ----------
 const downloadPDF = async (row) => {
@@ -1140,6 +1184,8 @@ const downloadPDF = async (row) => {
   // Make sure these exist: /public/mindmirror_cover.jpg and /public/mindmirror_back.jpg
   const coverImg = await loadImage('/booklet_front.jpg');
   const backImg = await loadImage('/booklet_back.jpg');
+  const symbolImg = await loadImage('/symbol-only.png'); // new: cover symbol
+  
 
   // 5.5" × 8.5" in points (72 pt/inch)
   const doc = new jsPDF({
@@ -1153,26 +1199,46 @@ const downloadPDF = async (row) => {
 
   const name = safe(row.full_name) !== '—' ? row.full_name : safe(row.email);
 
-  // ---------- PAGE 1: PHOTO COVER ----------
-  // Full-bleed cover image
+  // ---------- PAGE 1: COVER (Draft 5 — Right-Aligned Text + Top-Left Logo) ----------
+  // ---------- PAGE 1: SIMPLE COVER (Background + Movable Name) ----------
+  // ---------- PAGE 1: SIMPLE COVER (Background + Left-Aligned Name) ----------
   doc.addImage(coverImg, 'JPEG', 0, 0, pageWidth, pageHeight);
+  
+  // Clean the name
+  let coverName = name || "Your MindMirror3D Edition";
+  if (coverName.includes('@')) {
+    const base = coverName.split('@')[0];
+    coverName = base.charAt(0).toUpperCase() + base.slice(1);
+  }
+  // Append "'s"
+  coverName = `${coverName}'s`;
 
-  // (Optional) If you want to overlay text on top of the cover image, uncomment:
-  doc.setFont('Helvetica', 'bold');
-  doc.setFontSize(16);
-  doc.setTextColor('#FFFFFF');
-  doc.text(`Prepared for: ${name}`, 30, 60);
+  
+  // Appearance
+  doc.setFont("Times", "normal");
+  doc.setFontSize(28);
+  doc.setTextColor("#FFFFFF");
+  
+  // 👉 You will adjust ONLY these two values:
+  const X = pageWidth * 0.11;   // how far from the left the name begins
+  const Y = pageHeight * 0.23;  // vertical position
+  
+  // Draw the name (left-aligned = begins exactly at X)
+  doc.text(coverName, X, Y, { align: 'left' });
+  
+  
+
 
   // PAGE 2: blank
   doc.addPage();
 
   // ---------- PAGE 3: BIG FIVE PAGE ----------
   doc.addPage();
-  drawBigFivePage(doc, row);
+  await drawBigFivePage(doc, row);
 
   // ---------- PAGE 4: BASIC NEEDS PAGE ----------
   doc.addPage();
-  drawBasicNeedsPage(doc, row);
+  await drawBasicNeedsPage(doc, row);
 
   // PAGE 5: Head of sculpture
   doc.addPage();
@@ -1186,7 +1252,11 @@ const downloadPDF = async (row) => {
   doc.addPage();
   await drawLegPage(doc, row);
 
-  // ---------- PAGE 8: BACK COVER (WOOD TEXTURE) ----------
+  //---------- PAGE 8: THANK YOU PAGE ----------
+  await addThankYouPage(doc, name);
+
+
+  // ---------- PAGE 9: BACK COVER (WOOD TEXTURE) ----------
   doc.addPage();
   doc.addImage(backImg, 'JPEG', 0, 0, pageWidth, pageHeight);
 
