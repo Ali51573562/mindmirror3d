@@ -1713,7 +1713,7 @@ function drawBasicNeedsExplanationPage(doc) {
 
 
 // ---------- THANK YOU PAGE (Draft 13) ----------
-async function addThankYouPage(doc, userName) {
+async function drawThankYouPage(doc, userName) {
     const pageWidth = doc.internal.pageSize.getWidth();   // 396 pt
     const pageHeight = doc.internal.pageSize.getHeight(); // 612 pt
 
@@ -1724,9 +1724,9 @@ async function addThankYouPage(doc, userName) {
 
     const TEXT_COLOR = "#5A3A25";
     const BG_COLOR = "#F5EFE6";
-    
 
     const nameToUse = userName || "Friend";
+    
 
     // Load PNG logo from /public
     const logoImg = await loadImage("/symbol-only.png");
@@ -1827,45 +1827,35 @@ const downloadPDF = async (row) => {
   });
 
   const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight(); 
+  const pageHeight = doc.internal.pageSize.getHeight();
+  
   // ---------- USER NAME HANDLING ----------
-  // Full name from DB or fallback to email
+  // (1) Full name from DB or fallback to email
   const fullName =
     safe(row.full_name) !== '—' ? safe(row.full_name) : safe(row.email);
   
-  // First name from DB if available (preferred)
+  // (2) First name from DB OR derived from fullName
   let firstName = safe(row.first_name);
-  if (firstName === '—' || !firstName) {
-    // Fallback: derive from fullName (before first space or '@')
+  
+  if (!firstName || firstName === '—') {
     const base = (fullName || '').trim();
     if (base.includes(' ')) {
       firstName = base.split(' ')[0];
     } else if (base.includes('@')) {
       firstName = base.split('@')[0];
     } else {
-      firstName = base || 'You';
+      firstName = base || 'Friend';
     }
   }
-  
-  // Keep a generic name variable if you still use it somewhere else
-  const name = fullName || firstName || 'You';
-  
 
   
 
-
+  // ---------- PAGE 1: COVER (Draft 5 — Right-Aligned Text + Top-Left Logo) ----------
+  // ---------- PAGE 1: SIMPLE COVER (Background + Movable Name) ----------
   // ---------- PAGE 1: SIMPLE COVER (Background + Left-Aligned Name) ----------
   doc.addImage(coverImg, 'JPEG', 0, 0, pageWidth, pageHeight);
-  
-  // Clean the name
-  let coverName = name || "Your MindMirror3D Edition";
-  if (coverName.includes('@')) {
-    const base = coverName.split('@')[0];
-    coverName = base.charAt(0).toUpperCase() + base.slice(1);
-  }
-  // Append "'s"
-  coverName = `${coverName}'s`;
 
+  let coverName = `${firstName}'s`;
   
   // Appearance
   doc.setFont("Times", "normal");
@@ -1967,7 +1957,7 @@ const downloadPDF = async (row) => {
   drawBasicNeedsExplanationPage(doc);
 
   //---------- PAGE 8: THANK YOU PAGE ----------
-  await addThankYouPage(doc, name);
+  await drawThankYouPage(doc, firstName);
 
   // PAGE 2: blank
   doc.addPage();
