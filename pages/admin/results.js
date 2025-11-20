@@ -252,6 +252,122 @@ function scoreBigFive(answers) {
   };
 }
 
+// --------- LOAD BIG FIVE TRAIT DESCRIPTIONS (booklet.txt) ----------
+let traitDescriptionsCache = null;
+
+async function loadTraitDescriptions() {
+  if (traitDescriptionsCache) return traitDescriptionsCache;
+
+  const res = await fetch("/booklet/traits.txt");
+  const text = await res.text();
+
+  // Split into blocks separated by blank lines
+  const blocks = text
+    .split(/\n\s*\n/)
+    .map((b) => b.trim())
+    .filter((b) => b.length > 0);
+
+  const map = {};
+
+  blocks.forEach((block) => {
+    const colonIndex = block.indexOf(":");
+    if (colonIndex === -1) return;
+
+    const name = block.slice(0, colonIndex).trim();   // e.g. "Openness" or "Emotional Stability"
+    const body = block.slice(colonIndex + 1).trim();  // everything after the colon
+
+    map[name] = body;
+  });
+
+  traitDescriptionsCache = map;
+  return map;
+}
+
+
+function getSortedBigFiveTraits(row) {
+  const scored = scoreBigFive(row.bigfive_answers || []);
+  if (!scored) return null;
+
+  const bfPct = scored.pct;
+  const bfRaw = scored.raw;
+
+  const traitOrder = [
+    "Openness",
+    "Conscientiousness",
+    "Extraversion",
+    "Agreeableness",
+    "EmotionalStability",
+  ];
+
+  const rawKeyFor = (traitKey) => {
+    switch (traitKey) {
+      case "Openness":
+        return "openness";
+      case "Conscientiousness":
+        return "conscientiousness";
+      case "Extraversion":
+        return "extraversion";
+      case "Agreeableness":
+        return "agreeableness";
+      case "EmotionalStability":
+        return "neuroticism"; // stored as neuroticism
+      default:
+        return null;
+    }
+  };
+
+  const sorted = traitOrder
+    .map((key) => {
+      const pct = bfPct[key] ?? 0;
+      const rawKey = rawKeyFor(key);
+      const raw = rawKey ? bfRaw[rawKey] ?? 0 : 0;
+      return { key, pct, raw };
+    })
+    .sort((a, b) => {
+      if (b.pct !== a.pct) return b.pct - a.pct;
+      if (b.raw !== a.raw) return b.raw - a.raw;
+      return traitOrder.indexOf(a.key) - traitOrder.indexOf(b.key);
+    });
+
+  return sorted;
+}
+
+function displayTraitName(key) {
+  return key === "EmotionalStability" ? "Emotional Stability" : key;
+}
+
+
+// --------- LOAD NEEDS DESCRIPTIONS (needs.txt) ----------
+let needsDescriptionsCache = null;
+
+async function loadNeedsDescriptions() {
+  if (needsDescriptionsCache) return needsDescriptionsCache;
+
+  const res = await fetch("/booklet/needs.txt");
+  const text = await res.text();
+
+  const lines = text
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+
+  const map = {};
+
+  for (const line of lines) {
+    const colonIndex = line.indexOf(":");
+    if (colonIndex === -1) continue;
+
+    const name = line.slice(0, colonIndex).trim();   // e.g. "Fun" or "Love and Belonging"
+    const body = line.slice(colonIndex + 1).trim();  // explanation text
+
+    map[name] = body;
+  }
+
+  needsDescriptionsCache = map;
+  return map;
+}
+
+
 // Map full trait key to your head-image letter
 function traitKeyToLetter(traitKey) {
   switch (traitKey) {
@@ -456,6 +572,151 @@ async function drawBigFivePage(doc, row) {
   // }
 }
 
+// ---------- TOP BIG FIVE TRAIT PAGE ----------
+async function drawTopTraitPage(doc, row) {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const TEXT_COLOR = "#5A3A25";
+
+  const marginLeft = 60;
+  const marginRight = 60;
+  const maxWidth = pageWidth - marginLeft - marginRight;
+
+  const bodyFontSize = 11;
+  const lineHeightFactor = 1.4;
+  const lineStep = bodyFontSize * lineHeightFactor;
+
+  const sortedTraits = getSortedBigFiveTraits(row);
+  if (!sortedTraits) {
+    doc.setFont("Times", "normal");
+    doc.setFontSize(14);
+    doc.setTextColor(TEXT_COLOR);
+    doc.text(
+      "Big Five test not completed or invalid answers.",
+      marginLeft,
+      100
+    );
+    return;
+  }
+
+  const topTraitKey = sortedTraits[0].key;
+  const titleName = displayTraitName(topTraitKey); // e.g. "Openness" or "Emotional Stability"
+
+  // Load descriptions from booklet.txt
+  const traitDescriptions = await loadTraitDescriptions();
+  const explanationFromFile = traitDescriptions[titleName] || "";
+
+  // ----- TITLE -----
+  doc.setFont("Times", "normal");
+  doc.setFontSize(24);
+  doc.setTextColor(TEXT_COLOR);
+  doc.text(titleName, pageWidth / 2, 80, { align: "center" });
+
+  // ----- BODY TEXT -----
+  doc.setFont("Times", "normal");
+  doc.setFontSize(bodyFontSize);
+  doc.setTextColor(TEXT_COLOR);
+
+  const paragraphs = [];
+
+  paragraphs.push(
+    `Based on your Big Five results, your strongest personality trait is ${titleName}.`
+  );
+
+  if (explanationFromFile) {
+    paragraphs.push(explanationFromFile);
+  }
+
+  let y = 120;
+
+  paragraphs.forEach((para) => {
+    const lines = doc.splitTextToSize(para, maxWidth);
+    doc.text(lines, marginLeft, y, {
+      align: "left",
+      lineHeightFactor,
+    });
+    y += lines.length * lineStep + lineStep;
+  });
+}
+
+
+// ---------- SECOND BIG FIVE TRAIT PAGE ----------
+async function drawSecondTraitPage(doc, row) {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const TEXT_COLOR = "#5A3A25";
+
+  const marginLeft = 60;
+  const marginRight = 60;
+  const maxWidth = pageWidth - marginLeft - marginRight;
+
+  const bodyFontSize = 11;
+  const lineHeightFactor = 1.4;
+  const lineStep = bodyFontSize * lineHeightFactor;
+
+  const sortedTraits = getSortedBigFiveTraits(row);
+  if (!sortedTraits) {
+    doc.setFont("Times", "normal");
+    doc.setFontSize(14);
+    doc.setTextColor(TEXT_COLOR);
+    doc.text(
+      "Big Five test not completed or invalid answers.",
+      marginLeft,
+      100
+    );
+    return;
+  }
+
+  if (sortedTraits.length < 2) {
+    doc.setFont("Times", "normal");
+    doc.setFontSize(14);
+    doc.setTextColor(TEXT_COLOR);
+    doc.text(
+      "Not enough Big Five data to identify a second strongest trait.",
+      marginLeft,
+      100
+    );
+    return;
+  }
+
+  const secondTraitKey = sortedTraits[1].key;
+  const titleName = displayTraitName(secondTraitKey);
+
+  const traitDescriptions = await loadTraitDescriptions();
+  const explanationFromFile = traitDescriptions[titleName] || "";
+
+  // ----- TITLE -----
+  doc.setFont("Times", "normal");
+  doc.setFontSize(24);
+  doc.setTextColor(TEXT_COLOR);
+  doc.text(titleName, pageWidth / 2, 80, { align: "center" });
+
+  // ----- BODY TEXT -----
+  doc.setFont("Times", "normal");
+  doc.setFontSize(bodyFontSize);
+  doc.setTextColor(TEXT_COLOR);
+
+  const paragraphs = [];
+
+  paragraphs.push(
+    `Your second strongest Big Five trait is ${titleName}. It also plays a meaningful role in how you think, feel, and act in daily life.`
+  );
+
+  if (explanationFromFile) {
+    paragraphs.push(explanationFromFile);
+  }
+
+  let y = 120;
+
+  paragraphs.forEach((para) => {
+    const lines = doc.splitTextToSize(para, maxWidth);
+    doc.text(lines, marginLeft, y, {
+      align: "left",
+      lineHeightFactor,
+    });
+    y += lines.length * lineStep + lineStep;
+  });
+}
+
+
 
 // ---------- BASIC NEEDS PAGE LAYOUT — TABLE STYLE ----------
 async function drawBasicNeedsPage(doc, row) {
@@ -575,6 +836,211 @@ async function drawBasicNeedsPage(doc, row) {
   //   doc.addImage(symbol, "PNG", sx, sy, symbolSize, symbolSize);
   // }
 }
+
+// ---------- TOP NEED EXPLANATION PAGE (AFTER BASIC NEEDS RESULT) ----------
+async function drawTopNeedPage(doc, row) {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const TEXT_COLOR = "#5A3A25";
+
+  const marginLeft = 60;
+  const marginRight = 60;
+  const maxWidth = pageWidth - marginLeft - marginRight;
+
+  const bodyFontSize = 11;
+  const lineHeightFactor = 1.4;
+  const lineStep = bodyFontSize * lineHeightFactor;
+
+  // Score Basic Needs
+  const bn = scoreBasicNeeds(row.basicneeds_answers || []);
+  if (!bn) {
+    doc.setFont("Times", "normal");
+    doc.setFontSize(16);
+    doc.setTextColor(TEXT_COLOR);
+    doc.text(
+      "Basic Needs test not completed or invalid answers.",
+      marginLeft,
+      100
+    );
+    return;
+  }
+
+  // Determine top need (same tie-break as Basic Needs page)
+  let needs = [
+    { key: "Survival", pct: bn.survival_pct ?? 0, raw: bn.survival ?? 0 },
+    { key: "Love", pct: bn.love_pct ?? 0, raw: bn.love ?? 0 },
+    { key: "Freedom", pct: bn.freedom_pct ?? 0, raw: bn.freedom ?? 0 },
+    { key: "Power", pct: bn.power_pct ?? 0, raw: bn.power ?? 0 },
+    { key: "Fun", pct: bn.fun_pct ?? 0, raw: bn.fun ?? 0 },
+  ];
+
+  const needOrder = ["Survival", "Love", "Freedom", "Power", "Fun"];
+
+  needs = needs.sort((a, b) => {
+    if (b.pct !== a.pct) return b.pct - a.pct;
+    if (b.raw !== a.raw) return b.raw - a.raw;
+    return needOrder.indexOf(a.key) - needOrder.indexOf(b.key);
+  });
+
+  const topNeedKey = needs[0].key;
+
+  // Map internal key → name used in needs.txt
+  const internalToFileKey = {
+    Survival: "Survival",
+    Love: "Love and Belonging",
+    Freedom: "Freedom",
+    Power: "Power",
+    Fun: "Fun",
+  };
+
+  const titleName = internalToFileKey[topNeedKey] || topNeedKey;
+
+  // Load descriptions from needs.txt
+  const needsDescriptions = await loadNeedsDescriptions();
+  const explanationFromFile = needsDescriptions[titleName] || "";
+
+  // ----- TITLE -----
+  doc.setFont("Times", "normal");
+  doc.setFontSize(24);
+  doc.setTextColor(TEXT_COLOR);
+  doc.text(titleName, pageWidth / 2, 80, { align: "center" });
+
+  // ----- BODY TEXT -----
+  doc.setFont("Times", "normal");
+  doc.setFontSize(bodyFontSize);
+  doc.setTextColor(TEXT_COLOR);
+
+  const paragraphs = [];
+
+  // Short intro that links to the user's results
+  paragraphs.push(
+    `Based on your Basic Needs results, your strongest psychological need right now is ${titleName}.`
+  );
+
+  // Main explanation from needs.txt (without the "Name:" prefix)
+  if (explanationFromFile) {
+    paragraphs.push(explanationFromFile);
+  }
+
+  let y = 120;
+
+  paragraphs.forEach((para) => {
+    const lines = doc.splitTextToSize(para, maxWidth);
+    doc.text(lines, marginLeft, y, {
+      align: "left",
+      lineHeightFactor,
+    });
+    y += lines.length * lineStep + lineStep;
+  });
+}
+
+// ---------- SECOND NEED EXPLANATION PAGE ----------
+async function drawSecondNeedPage(doc, row) {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const TEXT_COLOR = "#5A3A25";
+
+  const marginLeft = 60;
+  const marginRight = 60;
+  const maxWidth = pageWidth - marginLeft - marginRight;
+
+  const bodyFontSize = 11;
+  const lineHeightFactor = 1.4;
+  const lineStep = bodyFontSize * lineHeightFactor;
+
+  // Score Basic Needs
+  const bn = scoreBasicNeeds(row.basicneeds_answers || []);
+  if (!bn) {
+    doc.setFont("Times", "normal");
+    doc.setFontSize(14);
+    doc.setTextColor(TEXT_COLOR);
+    doc.text(
+      "Basic Needs test not completed or invalid answers.",
+      marginLeft,
+      100
+    );
+    return;
+  }
+
+  // Determine needs ranking (same as Basic Needs page / Top Need page)
+  let needs = [
+    { key: "Survival", pct: bn.survival_pct ?? 0, raw: bn.survival ?? 0 },
+    { key: "Love", pct: bn.love_pct ?? 0, raw: bn.love ?? 0 },
+    { key: "Freedom", pct: bn.freedom_pct ?? 0, raw: bn.freedom ?? 0 },
+    { key: "Power", pct: bn.power_pct ?? 0, raw: bn.power ?? 0 },
+    { key: "Fun", pct: bn.fun_pct ?? 0, raw: bn.fun ?? 0 },
+  ];
+
+  const needOrder = ["Survival", "Love", "Freedom", "Power", "Fun"];
+
+  needs = needs.sort((a, b) => {
+    if (b.pct !== a.pct) return b.pct - a.pct;
+    if (b.raw !== a.raw) return b.raw - a.raw;
+    return needOrder.indexOf(a.key) - needOrder.indexOf(b.key);
+  });
+
+  if (needs.length < 2) {
+    doc.setFont("Times", "normal");
+    doc.setFontSize(14);
+    doc.setTextColor(TEXT_COLOR);
+    doc.text(
+      "Not enough Basic Needs data to identify a second strongest need.",
+      marginLeft,
+      100
+    );
+    return;
+  }
+
+  const secondNeedKey = needs[1].key;
+
+  // Map internal key → name used in needs.txt
+  const internalToFileKey = {
+    Survival: "Survival",
+    Love: "Love and Belonging",
+    Freedom: "Freedom",
+    Power: "Power",
+    Fun: "Fun",
+  };
+
+  const titleName = internalToFileKey[secondNeedKey] || secondNeedKey;
+
+  // Load descriptions from needs.txt
+  const needsDescriptions = await loadNeedsDescriptions();
+  const explanationFromFile = needsDescriptions[titleName] || "";
+
+  // ----- TITLE -----
+  doc.setFont("Times", "normal");
+  doc.setFontSize(24);
+  doc.setTextColor(TEXT_COLOR);
+  doc.text(titleName, pageWidth / 2, 80, { align: "center" });
+
+  // ----- BODY TEXT -----
+  doc.setFont("Times", "normal");
+  doc.setFontSize(bodyFontSize);
+  doc.setTextColor(TEXT_COLOR);
+
+  const paragraphs = [];
+
+  // Short intro tying this to their ranking
+  paragraphs.push(
+    `Your second strongest psychological need is ${titleName}. It also plays an important role in how you feel balanced and motivated in daily life.`
+  );
+
+  if (explanationFromFile) {
+    paragraphs.push(explanationFromFile);
+  }
+
+  let y = 120;
+
+  paragraphs.forEach((para) => {
+    const lines = doc.splitTextToSize(para, maxWidth);
+    doc.text(lines, marginLeft, y, {
+      align: "left",
+      lineHeightFactor,
+    });
+    y += lines.length * lineStep + lineStep;
+  });
+}
+
+
 
 
 // ---------- HEAD PAGE LAYOUT — OPTION 2 (SMART SPLIT AROUND IMAGE, NO STRETCH) ----------
@@ -781,341 +1247,469 @@ async function drawHeadPage(doc, row) {
 }
 
 
-
-
-
-
-
-
-
-
 // ---------- BODY PAGE LAYOUT (IMAGE TOP-RIGHT, TEXT WRAPS, 4 SYMBOLS) ----------
+// // ---------- BODY PAGE LAYOUT — OPTION 2 (SMART SPLIT AROUND IMAGE, NO STRETCH) ----------
 async function drawBodyPage(doc, row) {
-    const pageWidth = doc.internal.pageSize.getWidth();   // ~396 pt
-    const pageHeight = doc.internal.pageSize.getHeight(); // ~612 pt
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const inch = 72;
 
-    const TEXT_COLOR = '#1B2236';
+  const TEXT_COLOR = "#5A3A25"; // MindMirror brown
 
-    const bn = scoreBasicNeeds(row.basicneeds_answers || []);
-    if (!bn) {
-        doc.setFont('Helvetica', 'normal');
-        doc.setFontSize(14);
-        doc.setTextColor(TEXT_COLOR);
-        doc.text('Basic Needs test not completed or invalid answers.', 40, 80);
-        return;
-    }
+  const bn = scoreBasicNeeds(row.basicneeds_answers || []);
+  if (!bn) {
+    doc.setFont("Times", "normal");
+    doc.setFontSize(14);
+    doc.setTextColor(TEXT_COLOR);
+    doc.text("Basic Needs test not completed or invalid answers.", 40, 80);
+    return;
+  }
 
-    // ---------- Top 2 needs with tiebreak (same logic as your BN chart) ----------
-    let needs = [
-        { key: 'Survival', pct: bn.survival_pct, raw: bn.survival },
-        { key: 'Love', pct: bn.love_pct, raw: bn.love },
-        { key: 'Freedom', pct: bn.freedom_pct, raw: bn.freedom },
-        { key: 'Power', pct: bn.power_pct, raw: bn.power },
-        { key: 'Fun', pct: bn.fun_pct, raw: bn.fun },
+  // ---------- Need ordering + tie-break ----------
+  let needs = [
+    { key: "Survival", pct: bn.survival_pct ?? 0, raw: bn.survival ?? 0 },
+    { key: "Love", pct: bn.love_pct ?? 0, raw: bn.love ?? 0 },
+    { key: "Freedom", pct: bn.freedom_pct ?? 0, raw: bn.freedom ?? 0 },
+    { key: "Power", pct: bn.power_pct ?? 0, raw: bn.power ?? 0 },
+    { key: "Fun", pct: bn.fun_pct ?? 0, raw: bn.fun ?? 0 },
+  ];
+
+  const needOrder = ["Survival", "Love", "Freedom", "Power", "Fun"];
+
+  needs = needs.sort((a, b) => {
+    if (b.pct !== a.pct) return b.pct - a.pct;
+    if (b.raw !== a.raw) return b.raw - a.raw;
+    return needOrder.indexOf(a.key) - needOrder.indexOf(b.key);
+  });
+
+  const top1Need = needs[0].key;
+  const top2Need = needs[1].key;
+
+  const top1Letter = needKeyToLetter(top1Need);
+  const top2Letter = needKeyToLetter(top2Need);
+
+  const bodyImagePath = `/booklet/Bodies/${top1Letter}${top2Letter}-B.jpg`;
+
+  // ---------- TITLE ----------
+  doc.setFont("Times", "normal");
+  doc.setFontSize(24);
+  doc.setTextColor(TEXT_COLOR);
+  doc.text("Body of Your Sculpture", pageWidth / 2, 80, { align: "center" });
+
+  // ---------- SUBTITLE ----------
+  doc.setFontSize(11);
+  const subtitle = `Shaped by your strongest needs: ${top1Need} and ${top2Need}. It reflects what helps you feel grounded, motivated, and balanced.`;
+  const subtitleLines = doc.splitTextToSize(subtitle, pageWidth - 120);
+  doc.text(subtitleLines, pageWidth / 2, 112, { align: "center" });
+
+  // ---------- LAYOUT CONSTANTS ----------
+  const marginLeft = 60;
+  const marginRight = 60;
+  const gap = 14;
+
+  // Fixed width, dynamic height like head page
+  const baseImageWidth = 2.1 * inch;
+  let imageWidth = baseImageWidth;
+  let imageHeight = baseImageWidth;
+
+  // Load image to get real aspect ratio
+  let img = null;
+  try {
+    img = await loadImage(bodyImagePath);
+    const aspect = img.height / img.width;
+    imageWidth = baseImageWidth;
+    imageHeight = baseImageWidth * aspect;
+  } catch (err) {}
+
+  const imageX = pageWidth - marginRight - imageWidth;
+  const imageY = 150; // matches head page
+
+  const narrowTextWidth = imageX - marginLeft - gap;
+  const fullTextWidth = pageWidth - marginLeft - marginRight;
+
+  const imageBottomY = imageY + imageHeight;
+
+  // ---------- LOAD BODY SYMBOL TEXT ----------
+  const bodyDescriptions = await loadBodyDescriptions();
+  const bodyKey = `${top1Letter}${top2Letter}-B`; // e.g. FL-B
+  let symbolTexts = bodyDescriptions[bodyKey] || [];
+
+  symbolTexts = symbolTexts.slice(0, 4); // use up to 4
+  if (symbolTexts.length === 0) {
+    symbolTexts = [
+      `This body is shaped from your strongest needs: ${top1Need} and ${top2Need}.`,
+      "It represents the drives and motivations that help you feel steady, confident, and alive.",
     ];
+  }
 
-    const needOrder = ['Survival', 'Love', 'Freedom', 'Power', 'Fun'];
+  // ---------- TEXT SETUP ----------
+  const bodyFontSize = 11;
+  const lineHeightFactor = 1.4;
+  const lineHeight = bodyFontSize * lineHeightFactor;
 
-    needs = needs.sort((a, b) => {
-        if (b.pct !== a.pct) return b.pct - a.pct;      // 1) higher %
-        if (b.raw !== a.raw) return b.raw - a.raw;      // 2) higher raw
-        return needOrder.indexOf(a.key) - needOrder.indexOf(b.key); // 3) canonical order
+  doc.setFont("Times", "normal");
+  doc.setFontSize(bodyFontSize);
+  doc.setTextColor(TEXT_COLOR);
+
+  // ---------- FIRST PARAGRAPH (SMART SPLIT LIKE HEAD PAGE) ----------
+  const firstPara = symbolTexts[0];
+  const allFirstLines = doc.splitTextToSize(firstPara, narrowTextWidth);
+
+  const columnTopY = imageY + 4;
+
+  // How many lines reach bottom of image
+  const linesToImageBottom = Math.floor(imageHeight / lineHeight);
+
+  // Allow column to go 1 line BELOW the image bottom
+  let maxLinesInColumn = linesToImageBottom + 1;
+
+  // Don't exceed actual number of lines
+  maxLinesInColumn = Math.min(maxLinesInColumn, allFirstLines.length);
+
+  const firstLinesInColumn = allFirstLines.slice(0, maxLinesInColumn);
+  const overflowLines = allFirstLines.slice(maxLinesInColumn);
+
+  // Draw first part next to image
+  doc.text(firstLinesInColumn, marginLeft, columnTopY, {
+    align: "left",
+    lineHeightFactor,
+  });
+
+  const firstColumnHeight =
+    (firstLinesInColumn.length - 1) * lineHeight;
+  const firstBottomY = columnTopY + firstColumnHeight;
+
+  // ---------- FULL WIDTH SECTION ----------
+  const remainingParas = symbolTexts.slice(1);
+  const belowParagraphs = [];
+
+  if (overflowLines.length > 0) {
+    belowParagraphs.push(overflowLines.join(" "));
+  }
+
+  belowParagraphs.push(...remainingParas);
+
+  // Natural continuation spacing
+  let minStartBelowImage = imageBottomY + lineHeight * 0.3;
+  let continuationStart = firstBottomY + lineHeight;
+
+  let fullStartY = Math.max(continuationStart, minStartBelowImage);
+
+  belowParagraphs.forEach((para) => {
+    const lines = doc.splitTextToSize(para, fullTextWidth);
+    doc.text(lines, marginLeft, fullStartY, {
+      align: "left",
+      lineHeightFactor,
     });
+    fullStartY += lines.length * lineHeight + lineHeight;
+  });
 
-    const top1Need = needs[0].key;
-    const top2Need = needs[1].key;
-
-    const top1Letter = needKeyToLetter(top1Need);
-    const top2Letter = needKeyToLetter(top2Need);
-
-    // e.g. /booklet/Bodies/FL-B.jpg
-    const bodyImagePath = `/booklet/Bodies/${top1Letter}${top2Letter}-B.jpg`;
-
-    // ---------- Title ----------
-    const titleY = 60;
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(20);
-    doc.setTextColor(TEXT_COLOR);
-    doc.text('Body of Your Sculpture', pageWidth / 2, titleY, {
-        align: 'center',
-    });
-
-    // ---------- Layout constants ----------
-    const marginLeft = 40;
-    const marginRight = 40;
-
-    const imageMaxWidth = 130;   // target width for body image
-    const gap = 12;              // text / image gap
-
-    // Image anchored in top-right corner under the title
-    let drawWidth = imageMaxWidth;
-    let drawHeight = imageMaxWidth;    // default square approximation
-    const imageX = pageWidth - marginRight - drawWidth;
-    const imageY = titleY + 30;        // some gap under the title
-
-    // Text widths
-    const fullTextWidth = pageWidth - marginLeft - marginRight;
-    const narrowTextWidth = imageX - gap - marginLeft; // left of image
-
-    // ---------- Load body descriptions (B1..B4) ----------
-    const bodyDescriptions = await loadBodyDescriptions();
-    const bodyKey = `${top1Letter}${top2Letter}-B`; // e.g. "FL-B"
-    const symbolTextsRaw = bodyDescriptions[bodyKey] || [];
-
-    // We expect 4 symbol descriptions: B1..B4
-    let symbolTexts = symbolTextsRaw.slice(0, 4);
-    if (symbolTexts.length === 0) {
-        symbolTexts = [
-            `This body is shaped from your strongest needs: ${top1Need} and ${top2Need}.`,
-            'It represents what you need most to feel grounded, safe, and alive.',
-        ];
-    }
-
-    // ---------- Fonts for body text ----------
-    doc.setFont('Helvetica', 'normal');
-    doc.setFontSize(11);
-    doc.setTextColor(TEXT_COLOR);
-
-    const fontSize = doc.getFontSize();
-    const lineHeightFactor = 1.3;
-    const lineHeight = fontSize * lineHeightFactor;
-    const bulletSpacing = 12;
-
-    // ---------- Load image (for accurate height) ----------
-    let img = null;
-    try {
-        img = await loadImage(bodyImagePath);
-        const aspect = img.height / img.width;
-        drawHeight = drawWidth * aspect;
-
-        // Clamp if extremely tall
-        const maxImageHeight = pageHeight - imageY - 80;
-        if (drawHeight > maxImageHeight) {
-            drawHeight = maxImageHeight;
-            drawWidth = drawHeight / aspect;
-        }
-    } catch (err) {
-        // If loading fails, img stays null and we keep default square height
-    }
-
-    const imageBottomY = imageY + drawHeight;
-
-    // ---------- Bullet 1: narrow column to the left of the image ----------
-    const bullet1Text = `• ${symbolTexts[0]}`;
-    const bullet1Lines = doc.splitTextToSize(bullet1Text, narrowTextWidth);
-
-    // Start bullet 1 safely below the title but inside the image band
-    const safeBelowTitleY = titleY + 24;
-    const nearTopOfImageY = imageY + 10;
-    const bullet1StartY = Math.max(safeBelowTitleY, nearTopOfImageY);
-
-    doc.text(bullet1Lines, marginLeft, bullet1StartY, {
-        align: 'left',
-        lineHeightFactor,
-    });
-
-    const bullet1Height = (bullet1Lines.length - 1) * lineHeight;
-    const bullet1BottomY = bullet1StartY + bullet1Height;
-
-    // ---------- Bullets 2–4: full width below BOTH image and bullet 1 ----------
-    const remainingBullets = symbolTexts.slice(1).map((t) => `• ${t}`);
-
-    // Start full-width text below whichever is lower: image OR bullet 1
-    let fullStartY = Math.max(imageBottomY, bullet1BottomY) + 24;
-
-    remainingBullets.forEach((text) => {
-        const lines = doc.splitTextToSize(text, fullTextWidth);
-        doc.text(lines, marginLeft, fullStartY, {
-            align: 'left',
-            lineHeightFactor,
-        });
-        fullStartY += lines.length * lineHeight + bulletSpacing;
-    });
-
-    // ---------- Draw image last (so text 'flows around' it visually) ----------
-    if (img) {
-        const adjustedImageX = pageWidth - marginRight - drawWidth;
-        doc.addImage(img, 'JPEG', adjustedImageX, imageY, drawWidth, drawHeight);
-    }
+  // ---------- DRAW IMAGE LAST ----------
+  if (img) {
+    doc.addImage(img, "JPEG", imageX, imageY, imageWidth, imageHeight);
+  }
 }
+
 
 // ---------- LEG PAGE LAYOUT (IMAGE TOP-RIGHT, TEXT WRAPS) ----------
+// // ---------- LEG PAGE LAYOUT — OPTION 2 (SMART SPLIT AROUND IMAGE, NO STRETCH) ----------
 async function drawLegPage(doc, row) {
-    const pageWidth = doc.internal.pageSize.getWidth();   // ~396 pt
-    const pageHeight = doc.internal.pageSize.getHeight(); // ~612 pt
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const inch = 72;
 
-    const TEXT_COLOR = '#1B2236';
+  const TEXT_COLOR = "#5A3A25"; // MindMirror brown
 
-    const scored = scoreBigFive(row.bigfive_answers || []);
-    if (!scored) {
-        doc.setFont('Helvetica', 'normal');
-        doc.setFontSize(14);
-        doc.setTextColor(TEXT_COLOR);
-        doc.text('Big Five test not completed or invalid answers.', 40, 80);
-        return;
+  const scored = scoreBigFive(row.bigfive_answers || []);
+  if (!scored) {
+    doc.setFont("Times", "normal");
+    doc.setFontSize(14);
+    doc.setTextColor(TEXT_COLOR);
+    doc.text("Big Five test not completed or invalid answers.", 40, 80);
+    return;
+  }
+
+  const bfPct = scored.pct;
+  const bfRaw = scored.raw;
+
+  // Trait order + tie-break (same as other pages)
+  const traitOrder = [
+    "Openness",
+    "Conscientiousness",
+    "Extraversion",
+    "Agreeableness",
+    "EmotionalStability",
+  ];
+
+  const rawKeyFor = (traitKey) => {
+    switch (traitKey) {
+      case "Openness":
+        return "openness";
+      case "Conscientiousness":
+        return "conscientiousness";
+      case "Extraversion":
+        return "extraversion";
+      case "Agreeableness":
+        return "agreeableness";
+      case "EmotionalStability":
+        return "neuroticism";
+      default:
+        return null;
     }
+  };
 
-    const bfPct = scored.pct;
-    const bfRaw = scored.raw;
+  const sortedTraits = traitOrder
+    .map((key) => {
+      const pct = bfPct[key] ?? 0;
+      const rawKey = rawKeyFor(key);
+      const raw = rawKey ? bfRaw[rawKey] ?? 0 : 0;
+      return { key, pct, raw };
+    })
+    .sort((a, b) => {
+      if (b.pct !== a.pct) return b.pct - a.pct;
+      if (b.raw !== a.raw) return b.raw - a.raw;
+      return traitOrder.indexOf(a.key) - traitOrder.indexOf(b.key);
+    });
 
-    // Same trait order + tiebreak as the Big Five page
-    const traitOrder = [
-        'Openness',
-        'Conscientiousness',
-        'Extraversion',
-        'Agreeableness',
-        'EmotionalStability',
+  const prettyName = (key) =>
+    key === "EmotionalStability" ? "Emotional Stability" : key;
+
+  const top1Key = sortedTraits[0].key;
+  const top2Key = sortedTraits[1].key;
+  const top1Name = prettyName(top1Key);
+  const top2Name = prettyName(top2Key);
+
+  const top1Letter = traitKeyToLetter(top1Key);
+  const top2Letter = traitKeyToLetter(top2Key);
+  const legImagePath = `/booklet/Legs/${top1Letter}${top2Letter}-L.jpg`;
+
+  // ---------- TITLE ----------
+  doc.setFont("Times", "normal");
+  doc.setFontSize(24);
+  doc.setTextColor(TEXT_COLOR);
+  doc.text("Legs of Your Sculpture", pageWidth / 2, 80, { align: "center" });
+
+  // ---------- SUBTITLE ----------
+  doc.setFontSize(11);
+  const subtitle = `These legs express how your ${top1Name} and ${top2Name} traits show up in your actions, decisions, and the way you move through life.`;
+  const subtitleLines = doc.splitTextToSize(subtitle, pageWidth - 120);
+  doc.text(subtitleLines, pageWidth / 2, 112, { align: "center" });
+
+  // ---------- LAYOUT CONSTANTS ----------
+  const marginLeft = 60;
+  const marginRight = 60;
+  const gap = 14;
+
+  // Fixed width, dynamic height (no stretch)
+  const baseImageWidth = 2.1 * inch;
+  let imageWidth = baseImageWidth;
+  let imageHeight = baseImageWidth;
+
+  // Load image to get real aspect ratio
+  let img = null;
+  try {
+    img = await loadImage(legImagePath);
+    const aspect = img.height / img.width;
+    imageWidth = baseImageWidth;
+    imageHeight = baseImageWidth * aspect;
+  } catch (err) {
+    // if image missing, skip drawing
+  }
+
+  const imageX = pageWidth - marginRight - imageWidth;
+  const imageY = 150; // aligned with head/body pages
+
+  const narrowTextWidth = imageX - marginLeft - gap; // left column
+  const fullTextWidth = pageWidth - marginLeft - marginRight;
+
+  const imageBottomY = imageY + imageHeight;
+
+  // ---------- LOAD LEG DESCRIPTIONS ----------
+  const legDescriptions = await loadLegDescriptions();
+  const legKey = `${top1Letter}${top2Letter}-L`; // e.g. "AC-L"
+  let symbolTexts = legDescriptions[legKey] || [];
+
+  // Use up to 3 paragraphs
+  symbolTexts = symbolTexts.slice(0, 3);
+  if (symbolTexts.length === 0) {
+    symbolTexts = [
+      `These legs represent how your ${top1Name} and ${top2Name} traits turn into motion — the way you step into new situations and carry yourself forward.`,
+      "They symbolize your pace, your direction, and the way you bring your personality into everyday actions.",
     ];
+  }
 
-    const rawKeyFor = (traitKey) => {
-        switch (traitKey) {
-            case 'Openness':
-                return 'openness';
-            case 'Conscientiousness':
-                return 'conscientiousness';
-            case 'Extraversion':
-                return 'extraversion';
-            case 'Agreeableness':
-                return 'agreeableness';
-            case 'EmotionalStability':
-                return 'neuroticism'; // raw still stored as neuroticism
-            default:
-                return null;
-        }
-    };
+  // ---------- TEXT SETUP ----------
+  const bodyFontSize = 11;
+  const lineHeightFactor = 1.4;
+  const lineHeight = bodyFontSize * lineHeightFactor;
 
-    const sortedTraits = traitOrder
-        .map((key) => {
-            const pct = bfPct[key] ?? 0;
-            const rawKey = rawKeyFor(key);
-            const raw = rawKey ? bfRaw[rawKey] ?? 0 : 0;
-            return { key, pct, raw };
-        })
-        .sort((a, b) => {
-            if (b.pct !== a.pct) return b.pct - a.pct;       // 1) higher %
-            if (b.raw !== a.raw) return b.raw - a.raw;       // 2) higher raw
-            return traitOrder.indexOf(a.key) - traitOrder.indexOf(b.key); // 3) order
-        });
+  doc.setFont("Times", "normal");
+  doc.setFontSize(bodyFontSize);
+  doc.setTextColor(TEXT_COLOR);
 
-    const top1Key = sortedTraits[0].key;
-    const top2Key = sortedTraits[1].key;
+  // ---------- FIRST PARAGRAPH: SMART SPLIT NEXT TO IMAGE ----------
+  const firstPara = symbolTexts[0];
+  const allFirstLines = doc.splitTextToSize(firstPara, narrowTextWidth);
 
-    const prettyName = (key) =>
-        key === 'EmotionalStability' ? 'Emotional Stability' : key;
+  const columnTopY = imageY + 4;
 
-    const top1Name = prettyName(top1Key);
-    const top2Name = prettyName(top2Key);
+  // How many lines reach bottom of image
+  const linesToImageBottom = Math.floor(imageHeight / lineHeight);
 
-    const top1Letter = traitKeyToLetter(top1Key); // O/C/E/A/M mapping
-    const top2Letter = traitKeyToLetter(top2Key);
+  // Allow column to go 1 line below the image bottom
+  let maxLinesInColumn = linesToImageBottom + 1;
 
-    // e.g. /booklet/Legs/AC-L.jpg
-    const legImagePath = `/booklet/Legs/${top1Letter}${top2Letter}-L.jpg`;
+  // Don't exceed actual number of lines
+  maxLinesInColumn = Math.min(maxLinesInColumn, allFirstLines.length);
 
-    // ---------- Title ----------
-    const titleY = 60;
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(20);
-    doc.setTextColor(TEXT_COLOR);
-    doc.text('Legs of Your Sculpture', pageWidth / 2, titleY, {
-        align: 'center',
+  const firstLinesInColumn = allFirstLines.slice(0, maxLinesInColumn);
+  const overflowLines = allFirstLines.slice(maxLinesInColumn);
+
+  // Draw first part next to image
+  doc.text(firstLinesInColumn, marginLeft, columnTopY, {
+    align: "left",
+    lineHeightFactor,
+  });
+
+  const firstColumnHeight =
+    (firstLinesInColumn.length - 1) * lineHeight;
+  const firstBottomY = columnTopY + firstColumnHeight;
+
+  // ---------- FULL-WIDTH SECTION ----------
+  const remainingParas = symbolTexts.slice(1);
+  const belowParagraphs = [];
+
+  if (overflowLines.length > 0) {
+    belowParagraphs.push(overflowLines.join(" "));
+  }
+
+  belowParagraphs.push(...remainingParas);
+
+  // Natural continuation spacing
+  let minStartBelowImage = imageBottomY + lineHeight * 0.3;
+  let continuationStart = firstBottomY + lineHeight;
+
+  let fullStartY = Math.max(continuationStart, minStartBelowImage);
+
+  belowParagraphs.forEach((para) => {
+    const lines = doc.splitTextToSize(para, fullTextWidth);
+    doc.text(lines, marginLeft, fullStartY, {
+      align: "left",
+      lineHeightFactor,
     });
+    fullStartY += lines.length * lineHeight + lineHeight;
+  });
 
-    // ---------- Layout constants ----------
-    const marginLeft = 40;
-    const marginRight = 40;
-
-    const imageMaxWidth = 130;   // width target for leg image
-    const gap = 12;              // text / image gap
-
-    let drawWidth = imageMaxWidth;
-    let drawHeight = imageMaxWidth; // default square approximation
-    const imageX = pageWidth - marginRight - drawWidth;
-    const imageY = titleY + 30;     // under title with some space
-
-    // Text widths
-    const fullTextWidth = pageWidth - marginLeft - marginRight;
-    const narrowTextWidth = imageX - gap - marginLeft; // left of image
-
-    // ---------- Load leg symbol descriptions ----------
-    const legDescriptions = await loadLegDescriptions();
-    const legKey = `${top1Letter}${top2Letter}-L`; // e.g. "AC-L"
-    const symbolTextsRaw = legDescriptions[legKey] || [];
-
-    // Legs usually have 3 symbols L1..L3
-    let symbolTexts = symbolTextsRaw.slice(0, 3);
-    if (symbolTexts.length === 0) {
-        symbolTexts = [
-            `These legs reflect how your ${top1Name} and ${top2Name} traits show up in your actions and movement through life.`,
-            'They describe how you step into new situations and carry your personality into the world.',
-        ];
-    }
-
-    // ---------- Body text font ----------
-    doc.setFont('Helvetica', 'normal');
-    doc.setFontSize(11);
-    doc.setTextColor(TEXT_COLOR);
-
-    const fontSize = doc.getFontSize();
-    const lineHeightFactor = 1.3;
-    const lineHeight = fontSize * lineHeightFactor;
-    const bulletSpacing = 12;
-
-    // ---------- Load image to get actual aspect ratio ----------
-    let img = null;
-    try {
-        img = await loadImage(legImagePath);
-        const aspect = img.height / img.width;
-        drawHeight = drawWidth * aspect;
-
-        const maxImageHeight = pageHeight - imageY - 80;
-        if (drawHeight > maxImageHeight) {
-            drawHeight = maxImageHeight;
-            drawWidth = drawHeight / aspect;
-        }
-    } catch (err) {
-        // If no image, we'll just skip drawing it; drawHeight stays approx square
-    }
-
-    const imageBottomY = imageY + drawHeight;
-
-    // ---------- Bullet 1: narrow column to the left of the image ----------
-    const bullet1Text = `• ${symbolTexts[0]}`;
-    const bullet1Lines = doc.splitTextToSize(bullet1Text, narrowTextWidth);
-
-    // Start bullet 1 safely below title, and inside/near the image band
-    const safeBelowTitleY = titleY + 24;
-    const nearTopOfImageY = imageY + 10;
-    const bullet1StartY = Math.max(safeBelowTitleY, nearTopOfImageY);
-
-    doc.text(bullet1Lines, marginLeft, bullet1StartY, {
-        align: 'left',
-        lineHeightFactor,
-    });
-
-    const bullet1Height = (bullet1Lines.length - 1) * lineHeight;
-    const bullet1BottomY = bullet1StartY + bullet1Height;
-
-    // ---------- Bullets 2 & 3: full width below BOTH image and bullet 1 ----------
-    const remainingBullets = symbolTexts.slice(1).map((t) => `• ${t}`);
-
-    let fullStartY = Math.max(imageBottomY, bullet1BottomY) + 24;
-
-    remainingBullets.forEach((text) => {
-        const lines = doc.splitTextToSize(text, fullTextWidth);
-        doc.text(lines, marginLeft, fullStartY, {
-            align: 'left',
-            lineHeightFactor,
-        });
-        fullStartY += lines.length * lineHeight + bulletSpacing;
-    });
-
-    // ---------- Draw image last (so text appears to flow around it) ----------
-    if (img) {
-        const adjustedImageX = pageWidth - marginRight - drawWidth;
-        doc.addImage(img, 'JPEG', adjustedImageX, imageY, drawWidth, drawHeight);
-    }
+  // ---------- DRAW IMAGE LAST ----------
+  if (img) {
+    doc.addImage(img, "JPEG", imageX, imageY, imageWidth, imageHeight);
+  }
 }
+
+// ---------- BIG FIVE EXPLANATION PAGE (AFTER LEGS) ----------
+function drawBigFiveExplanationPage(doc) {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const TEXT_COLOR = "#5A3A25";
+
+  const marginLeft = 60;
+  const marginRight = 60;
+  const maxWidth = pageWidth - marginLeft - marginRight;
+
+  const bodyFontSize = 11;
+  const lineHeightFactor = 1.4;
+  const lineStep = bodyFontSize * lineHeightFactor;
+
+  // ----- TITLE -----
+  doc.setFont("Times", "normal");
+  doc.setFontSize(24);
+  doc.setTextColor(TEXT_COLOR);
+  doc.text("Big Five Personality Test", pageWidth / 2, 80, {
+    align: "center",
+  });
+
+  // ----- BODY TEXT -----
+  doc.setFont("Times", "normal");
+  doc.setFontSize(bodyFontSize);
+  doc.setTextColor(TEXT_COLOR);
+
+  const paragraphs = [
+    "The Big Five Personality Traits, also known as the Five Factor Model, capture the complexity of human personality through five fundamental dimensions. Let’s briefly explore each component:",
+    "Openness to experience: Reflects curiosity, imagination, and a willingness to embrace new ideas and experiences.",
+    "Conscientiousness: Demonstrates traits like responsibility, reliability, and organization, leading to self-discipline and goal-oriented behavior.",
+    "Extraversion: Encompasses qualities of being outgoing, sociable, and assertive, indicating a preference for social interaction and deriving energy from engaging with others.",
+    "Agreeableness: Exhibits kindness, cooperativeness, and empathy, fostering harmonious relationships and considering others’ feelings.",
+    "Emotional Stability: Measures the ability to maintain emotional balance and resilience in the face of stress, displaying calmness and composure.",
+    "The Big Five test assesses individuals’ scores across these traits, providing insights into their unique personality profile and enhancing understanding of their behavior, strengths, and areas for growth.",
+  ];
+
+  let y = 120; // starting Y for the first paragraph
+
+  paragraphs.forEach((para, index) => {
+    const lines = doc.splitTextToSize(para, maxWidth);
+    doc.text(lines, marginLeft, y, {
+      align: "left",
+      lineHeightFactor,
+    });
+
+    // move Y down by number of lines + one extra line for paragraph spacing
+    y += lines.length * lineStep + lineStep;
+  });
+}
+
+
+// ---------- BASIC NEEDS EXPLANATION PAGE ----------
+function drawBasicNeedsExplanationPage(doc) {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const TEXT_COLOR = "#5A3A25";
+
+  const marginLeft = 60;
+  const marginRight = 60;
+  const maxWidth = pageWidth - marginLeft - marginRight;
+
+  const bodyFontSize = 11;
+  const lineHeightFactor = 1.4;
+  const lineStep = bodyFontSize * lineHeightFactor;
+
+  // ----- TITLE -----
+  doc.setFont("Times", "normal");
+  doc.setFontSize(24);
+  doc.setTextColor(TEXT_COLOR);
+  doc.text("Basic Needs Test", pageWidth / 2, 80, {
+    align: "center",
+  });
+
+  // ----- BODY TEXT -----
+  doc.setFont("Times", "normal");
+  doc.setFontSize(bodyFontSize);
+  doc.setTextColor(TEXT_COLOR);
+
+  const paragraphs = [
+    "William Glasser’s Choice Theory highlights the core psychological needs that drive human behavior. These needs are essential for overall well-being and satisfaction. The theory identifies five key basic needs:",
+    "Survival: The fundamental requirements for sustaining life, such as air, water, food, and shelter.",
+    "Love and Belonging: The desire for social connections and meaningful relationships, including love, friendship, intimacy, and belonging to a group.",
+    "Power: The need for autonomy, control, and self-esteem, encompassing achievement, competence, recognition, and personal efficacy.",
+    "Freedom: The desire for independence, autonomy, and the freedom to make choices, involving independence, personal space, and self-direction.",
+    "Fun: The longing for enjoyment, pleasure, and spontaneity in life, including leisure and recreation, playfulness, and creativity.",
+    "By satisfying these needs in a balanced and healthy way, individuals are more likely to experience happiness, fulfillment, and improved mental well-being. Recognizing and addressing these needs can contribute to creating a satisfying and meaningful life.",
+  ];
+
+  let y = 120; // starting Y position for paragraphs
+
+  paragraphs.forEach((para) => {
+    const lines = doc.splitTextToSize(para, maxWidth);
+
+    doc.text(lines, marginLeft, y, {
+      align: "left",
+      lineHeightFactor,
+    });
+
+    y += lines.length * lineStep + lineStep;
+  });
+}
+
+
 
 
 // ---------- THANK YOU PAGE (Draft 13) ----------
@@ -1269,13 +1863,29 @@ const downloadPDF = async (row) => {
   // PAGE 2: blank
   doc.addPage();
 
-  // ---------- PAGE 3: BIG FIVE PAGE ----------
+  // PAGE 3: BIG FIVE RESULTS
   doc.addPage();
   await drawBigFivePage(doc, row);
-
-  // ---------- PAGE 4: BASIC NEEDS PAGE ----------
+  
+  // PAGE 4: TOP BIG FIVE TRAIT
+  doc.addPage();
+  await drawTopTraitPage(doc, row);
+  
+  // PAGE 5: SECOND BIG FIVE TRAIT
+  doc.addPage();
+  await drawSecondTraitPage(doc, row);
+  
+  // PAGE 6: BASIC NEEDS RESULTS
   doc.addPage();
   await drawBasicNeedsPage(doc, row);
+  
+  // PAGE 7: TOP NEED
+  doc.addPage();
+  await drawTopNeedPage(doc, row);
+  
+  // PAGE 8: SECOND NEED
+  doc.addPage();
+  await drawSecondNeedPage(doc, row);
 
   // PAGE 5: Head of sculpture
   doc.addPage();
@@ -1289,9 +1899,19 @@ const downloadPDF = async (row) => {
   doc.addPage();
   await drawLegPage(doc, row);
 
+  // PAGE 8: Big Five explanation
+  doc.addPage();
+  drawBigFiveExplanationPage(doc);
+
+  // PAGE 9: Basic Needs explanation
+  doc.addPage();
+  drawBasicNeedsExplanationPage(doc);
+
   //---------- PAGE 8: THANK YOU PAGE ----------
   await addThankYouPage(doc, name);
 
+  // PAGE 2: blank
+  doc.addPage();
 
   // ---------- PAGE 9: BACK COVER (WOOD TEXTURE) ----------
   doc.addPage();
