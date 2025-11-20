@@ -20,14 +20,6 @@ export default function Profile() {
   const [savingOrder, setSavingOrder] = useState(false);
   const [orderError, setOrderError] = useState('');
 
-  // Map status -> human text
-  const statusLabel = (st) =>
-    ({
-      received: 'Order received',
-      design: 'Sculpture in design',
-      printing: 'Printing',
-      shipped: 'Shipped',
-    }[st] || 'Order received');
 
   // 1) Require login
   useEffect(() => {
@@ -193,9 +185,7 @@ export default function Profile() {
             <div className="text-sm text-gray-500 mb-1">Step 4</div>
             <div className="font-semibold">Order & Delivery</div>
 
-            <div className="mt-2 text-sm text-gray-700">
-              {orderStatus ? statusLabel(orderStatus) : 'No order yet'}
-            </div>
+            
 
             {orderError && (
               <div className="mt-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-2">
@@ -221,12 +211,12 @@ export default function Profile() {
                 )}
               </div>
             ) : (
-              <div className="mt-4 flex items-center gap-4">
-                <Link href="/payment" className="text-blue-600 hover:underline">
-                  Manage payment
-                </Link>
+              <div className="mt-2 text-sm">
+                <span className="text-green-600">Order received</span>
               </div>
             )}
+
+            
           </div>
         </section>
 
