@@ -58,7 +58,7 @@ export default function PaymentPage() {
 
   const handlePayNow = async () => {
     setMsg('');
-
+  
     // Basic validation
     if (!fullName.trim()) {
       setMsg('Please enter your full name before proceeding to payment.');
@@ -72,15 +72,19 @@ export default function PaymentPage() {
       setMsg('Please enter a valid U.S. ZIP code (at least 5 digits).');
       return;
     }
-
+  
+    // 👉 NEW: derive first name from fullName
+    const cleanedFullName = fullName.trim();
+    const firstName = cleanedFullName.split(' ')[0]; // everything before first space
+  
     setLoading(true);
     try {
       const resp = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // Send user info + shipping address to backend
         body: JSON.stringify({
-          full_name: fullName.trim(),
+          full_name: cleanedFullName,
+          first_name: firstName,              // 👉 NEW: send first_name too
           shipping_address: {
             line1: addressLine1.trim(),
             line2: addressLine2.trim() || null,
@@ -91,11 +95,10 @@ export default function PaymentPage() {
           },
         }),
       });
-
+  
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.error || 'Failed to create session');
-
-      // Redirect to Stripe Checkout
+  
       window.location.href = data.url;
     } catch (e) {
       setMsg(e.message || 'Something went wrong');
@@ -103,7 +106,7 @@ export default function PaymentPage() {
       setLoading(false);
     }
   };
-
+  
   return (
     <>
       <Navbar />
@@ -269,7 +272,7 @@ export default function PaymentPage() {
             disabled={loading || infoLoading}
             className="bg-blue-600 text-white px-8 py-3 rounded-xl text-lg font-medium hover:bg-blue-700 transition disabled:opacity-60"
           >
-            {loading ? 'Redirecting…' : 'Pay Now'}
+            {loading ? 'Redirecting…' : 'Place Order'}
           </button>
           {msg && <p className="mt-4 text-sm text-red-600">{msg}</p>}
         </div>

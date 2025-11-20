@@ -1724,6 +1724,7 @@ async function addThankYouPage(doc, userName) {
 
     const TEXT_COLOR = "#5A3A25";
     const BG_COLOR = "#F5EFE6";
+    
 
     const nameToUse = userName || "Friend";
 
@@ -1826,12 +1827,33 @@ const downloadPDF = async (row) => {
   });
 
   const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
+  const pageHeight = doc.internal.pageSize.getHeight(); 
+  // ---------- USER NAME HANDLING ----------
+  // Full name from DB or fallback to email
+  const fullName =
+    safe(row.full_name) !== '—' ? safe(row.full_name) : safe(row.email);
+  
+  // First name from DB if available (preferred)
+  let firstName = safe(row.first_name);
+  if (firstName === '—' || !firstName) {
+    // Fallback: derive from fullName (before first space or '@')
+    const base = (fullName || '').trim();
+    if (base.includes(' ')) {
+      firstName = base.split(' ')[0];
+    } else if (base.includes('@')) {
+      firstName = base.split('@')[0];
+    } else {
+      firstName = base || 'You';
+    }
+  }
+  
+  // Keep a generic name variable if you still use it somewhere else
+  const name = fullName || firstName || 'You';
+  
 
-  const name = safe(row.full_name) !== '—' ? row.full_name : safe(row.email);
+  
 
-  // ---------- PAGE 1: COVER (Draft 5 — Right-Aligned Text + Top-Left Logo) ----------
-  // ---------- PAGE 1: SIMPLE COVER (Background + Movable Name) ----------
+
   // ---------- PAGE 1: SIMPLE COVER (Background + Left-Aligned Name) ----------
   doc.addImage(coverImg, 'JPEG', 0, 0, pageWidth, pageHeight);
   
@@ -1862,49 +1884,86 @@ const downloadPDF = async (row) => {
 
   // PAGE 2: blank
   doc.addPage();
+  // Background
+  const BG_COLOR = "#F5EFE6";
+  doc.setFillColor(BG_COLOR);
+  doc.rect(0, 0, pageWidth, pageHeight, "F");
 
   // PAGE 3: BIG FIVE RESULTS
   doc.addPage();
+  // Background
+  doc.setFillColor(BG_COLOR);
+  doc.rect(0, 0, pageWidth, pageHeight, "F");
   await drawBigFivePage(doc, row);
   
   // PAGE 4: TOP BIG FIVE TRAIT
   doc.addPage();
+  // Background
+  doc.setFillColor(BG_COLOR);
+  doc.rect(0, 0, pageWidth, pageHeight, "F");
   await drawTopTraitPage(doc, row);
   
   // PAGE 5: SECOND BIG FIVE TRAIT
   doc.addPage();
+  // Background
+  doc.setFillColor(BG_COLOR);
+  doc.rect(0, 0, pageWidth, pageHeight, "F");
   await drawSecondTraitPage(doc, row);
   
   // PAGE 6: BASIC NEEDS RESULTS
   doc.addPage();
+  // Background
+  doc.setFillColor(BG_COLOR);
+  doc.rect(0, 0, pageWidth, pageHeight, "F");
   await drawBasicNeedsPage(doc, row);
   
   // PAGE 7: TOP NEED
   doc.addPage();
+  // Background
+  doc.setFillColor(BG_COLOR);
+  doc.rect(0, 0, pageWidth, pageHeight, "F");
   await drawTopNeedPage(doc, row);
   
   // PAGE 8: SECOND NEED
   doc.addPage();
+  // Background
+  doc.setFillColor(BG_COLOR);
+  doc.rect(0, 0, pageWidth, pageHeight, "F");
   await drawSecondNeedPage(doc, row);
 
   // PAGE 5: Head of sculpture
   doc.addPage();
+  // Background
+  doc.setFillColor(BG_COLOR);
+  doc.rect(0, 0, pageWidth, pageHeight, "F");
   await drawHeadPage(doc, row);
 
   // PAGE 6: Body of sculpture
   doc.addPage();
+  // Background
+  doc.setFillColor(BG_COLOR);
+  doc.rect(0, 0, pageWidth, pageHeight, "F");
   await drawBodyPage(doc, row);
 
   // PAGE 7: Legs of sculpture
   doc.addPage();
+  // Background
+  doc.setFillColor(BG_COLOR);
+  doc.rect(0, 0, pageWidth, pageHeight, "F");
   await drawLegPage(doc, row);
 
   // PAGE 8: Big Five explanation
   doc.addPage();
+  // Background
+  doc.setFillColor(BG_COLOR);
+  doc.rect(0, 0, pageWidth, pageHeight, "F");
   drawBigFiveExplanationPage(doc);
 
   // PAGE 9: Basic Needs explanation
   doc.addPage();
+  // Background
+  doc.setFillColor(BG_COLOR);
+  doc.rect(0, 0, pageWidth, pageHeight, "F");
   drawBasicNeedsExplanationPage(doc);
 
   //---------- PAGE 8: THANK YOU PAGE ----------
@@ -1912,6 +1971,9 @@ const downloadPDF = async (row) => {
 
   // PAGE 2: blank
   doc.addPage();
+  // Background
+  doc.setFillColor(BG_COLOR);
+  doc.rect(0, 0, pageWidth, pageHeight, "F");
 
   // ---------- PAGE 9: BACK COVER (WOOD TEXTURE) ----------
   doc.addPage();

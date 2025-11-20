@@ -230,15 +230,6 @@ export default function Profile() {
           </div>
         </section>
 
-        {/* Personal Info*/}
-        <section className="p-6 bg-white rounded-xl shadow mb-12">
-          <div className="mb-4">
-            <div className="text-sm text-gray-500 mb-1">Step 5</div>
-            <div className="font-semibold text-xl text-gray-800">Your Information</div>
-          </div>
-          <PersonalInfoForm user={user} />
-        </section>
-
         {/* Account */}
         <section className="text-center">
           <button
