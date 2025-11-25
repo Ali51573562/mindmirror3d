@@ -763,6 +763,16 @@ async function drawBasicNeedsPage(doc, row) {
 
   const top1 = needs[0].label;
   const top2 = needs[1].label;
+  
+  // ---- VISUAL SMOOTHING (remove ties in displayed percentages) ----
+  for (let i = 1; i < needs.length; i++) {
+    if (needs[i].pct >= needs[i - 1].pct) {
+      needs[i].pct = Math.max(0, needs[i - 1].pct - 4);
+    }
+  }
+  
+
+
 
   // ---------- TITLE ----------
   doc.setFont("Times", "normal");
