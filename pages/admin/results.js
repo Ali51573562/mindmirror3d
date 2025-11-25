@@ -330,6 +330,7 @@ function getSortedBigFiveTraits(row) {
     });
 
   return sorted;
+  
 }
 
 function displayTraitName(key) {
@@ -500,6 +501,15 @@ async function drawBigFivePage(doc, row) {
 
   const top1 = traits[0].label;
   const top2 = traits[1].label;
+  
+  // ---- VISUAL SMOOTHING FOR BIG FIVE (remove ties in displayed percentages) ----
+  for (let i = 1; i < traits.length; i++) {
+    if (traits[i].pct >= traits[i - 1].pct) {
+      traits[i].pct = Math.max(0, traits[i - 1].pct - 2);  
+    }
+  }
+  
+
 
   // ---------- TITLE ----------
   doc.setFont("Times", "normal");
@@ -767,7 +777,7 @@ async function drawBasicNeedsPage(doc, row) {
   // ---- VISUAL SMOOTHING (remove ties in displayed percentages) ----
   for (let i = 1; i < needs.length; i++) {
     if (needs[i].pct >= needs[i - 1].pct) {
-      needs[i].pct = Math.max(0, needs[i - 1].pct - 4);
+      needs[i].pct = Math.max(0, needs[i - 1].pct - 3);
     }
   }
   
