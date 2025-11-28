@@ -591,7 +591,7 @@ async function drawTopTraitPage(doc, row) {
   const marginRight = 60;
   const maxWidth = pageWidth - marginLeft - marginRight;
 
-  const bodyFontSize = 11;
+  const bodyFontSize = 12.5;
   const lineHeightFactor = 1.4;
   const lineStep = bodyFontSize * lineHeightFactor;
 
@@ -658,7 +658,7 @@ async function drawSecondTraitPage(doc, row) {
   const marginRight = 60;
   const maxWidth = pageWidth - marginLeft - marginRight;
 
-  const bodyFontSize = 11;
+  const bodyFontSize = 12.5;
   const lineHeightFactor = 1.4;
   const lineStep = bodyFontSize * lineHeightFactor;
 
@@ -866,7 +866,7 @@ async function drawTopNeedPage(doc, row) {
   const marginRight = 60;
   const maxWidth = pageWidth - marginLeft - marginRight;
 
-  const bodyFontSize = 11;
+  const bodyFontSize = 12.5;
   const lineHeightFactor = 1.4;
   const lineStep = bodyFontSize * lineHeightFactor;
 
@@ -962,7 +962,7 @@ async function drawSecondNeedPage(doc, row) {
   const marginRight = 60;
   const maxWidth = pageWidth - marginLeft - marginRight;
 
-  const bodyFontSize = 11;
+  const bodyFontSize = 12.5;
   const lineHeightFactor = 1.4;
   const lineStep = bodyFontSize * lineHeightFactor;
 
