@@ -452,6 +452,74 @@ function scoreBasicNeeds(arr) {
 }
 
 
+// ---------- TABLE OF CONTENTS PAGE (PAGE #2) ----------
+function drawTableOfContents(doc) {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const TEXT_COLOR = "#5A3A25";
+
+  const inch = 72;
+  const leftMargin = 0.9 * inch;
+  const rightMargin = 0.9 * inch;
+
+  const titleY = 90;
+  const startY = 180;
+  const rowGap = 26;
+
+  doc.setFont("Times", "normal");
+  doc.setTextColor(TEXT_COLOR);
+
+  // ----- TITLE -----
+  doc.setFontSize(22);
+  doc.text("Table of Contents", pageWidth / 2, titleY, {
+    align: "center",
+  });
+
+  // ----- ITEMS -----
+  doc.setFontSize(12.5);
+
+  const items = [
+    { title: "Big Five Personality Results", page: 1 },
+    { title: "Your Primary Big Five Trait", page: 2 },
+    { title: "Your Secondary Big Five Trait", page: 3 },
+    { title: "Basic Needs Results", page: 4 },
+    { title: "Your Dominant Basic Need", page: 5 },
+    { title: "Your Next Significant Basic Need", page: 6 },
+    { title: "Sculpture Head Interpretation", page: 7 },
+    { title: "Sculpture Body Interpretation", page: 8 },
+    { title: "Sculpture Legs Interpretation", page: 9 },
+    { title: "Big Five Personality Test", page: 10 },
+    { title: "Basic Needs Test", page: 11 },    
+  ];
+
+  const titleX = leftMargin;
+  const pageX = pageWidth - rightMargin;
+
+  let y = startY;
+
+  items.forEach((item) => {
+    const label = item.title;
+    const pageStr = String(item.page);
+
+    // Left: section title
+    doc.text(label, titleX, y, { align: "left" });
+
+    // Right: page number
+    doc.text(pageStr, pageX, y, { align: "right" });
+
+    // Optional: subtle dotted leader between title and page
+    // (simple approximation using a line)
+    const lineY = y + 4;
+    doc.setLineWidth(0.2);
+    doc.setDrawColor(TEXT_COLOR);
+    doc.line(titleX, lineY, pageX, lineY);
+
+    y += rowGap;
+  });
+}
+
+
+
 // ---------- BIG FIVE PAGE LAYOUT (PAGE #2) ----------
 // ---------- BIG FIVE PAGE LAYOUT — TABLE STYLE (Mockup) ----------
 async function drawBigFivePage(doc, row) {
@@ -1912,6 +1980,13 @@ const downloadPDF = async (row) => {
   const BG_COLOR = "#F5EFE6";
   doc.setFillColor(BG_COLOR);
   doc.rect(0, 0, pageWidth, pageHeight, "F");
+  
+  // ---------- PAGE 2: TABLE OF CONTENTS ----------
+  doc.addPage();
+  doc.setFillColor(BG_COLOR);
+  doc.rect(0, 0, pageWidth, pageHeight, "F");
+  
+  drawTableOfContents(doc);
 
   // PAGE 3: BIG FIVE RESULTS
   doc.addPage();
@@ -1919,6 +1994,20 @@ const downloadPDF = async (row) => {
   doc.setFillColor(BG_COLOR);
   doc.rect(0, 0, pageWidth, pageHeight, "F");
   await drawBigFivePage(doc, row);
+
+  // ----- MANUAL PAGE NUMBER (bottom-center) -----
+  doc.setFont("Times", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor("#5A3A25");
+  
+  // Center position
+  const inch = 72;
+  
+  // The string is the page number you choose manually
+  doc.text("1", pageWidth / 2, pageHeight - 0.5 * inch, {
+    align: "center",
+  });
+  
   
   // PAGE 4: TOP BIG FIVE TRAIT
   doc.addPage();
@@ -1927,12 +2016,32 @@ const downloadPDF = async (row) => {
   doc.rect(0, 0, pageWidth, pageHeight, "F");
   await drawTopTraitPage(doc, row);
   
+  // ----- MANUAL PAGE NUMBER (bottom-center) -----
+  doc.setFont("Times", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor("#5A3A25");
+  
+  // The string is the page number you choose manually
+  doc.text("2", pageWidth / 2, pageHeight - 0.5 * inch, {
+    align: "center",
+  });
+  
   // PAGE 5: SECOND BIG FIVE TRAIT
   doc.addPage();
   // Background
   doc.setFillColor(BG_COLOR);
   doc.rect(0, 0, pageWidth, pageHeight, "F");
   await drawSecondTraitPage(doc, row);
+  
+  // ----- MANUAL PAGE NUMBER (bottom-center) -----
+  doc.setFont("Times", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor("#5A3A25");
+  
+  // The string is the page number you choose manually
+  doc.text("3", pageWidth / 2, pageHeight - 0.5 * inch, {
+    align: "center",
+  });
   
   // PAGE 6: BASIC NEEDS RESULTS
   doc.addPage();
@@ -1941,6 +2050,16 @@ const downloadPDF = async (row) => {
   doc.rect(0, 0, pageWidth, pageHeight, "F");
   await drawBasicNeedsPage(doc, row);
   
+  // ----- MANUAL PAGE NUMBER (bottom-center) -----
+  doc.setFont("Times", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor("#5A3A25");
+  
+  // The string is the page number you choose manually
+  doc.text("4", pageWidth / 2, pageHeight - 0.5 * inch, {
+    align: "center",
+  });
+  
   // PAGE 7: TOP NEED
   doc.addPage();
   // Background
@@ -1948,12 +2067,32 @@ const downloadPDF = async (row) => {
   doc.rect(0, 0, pageWidth, pageHeight, "F");
   await drawTopNeedPage(doc, row);
   
+  // ----- MANUAL PAGE NUMBER (bottom-center) -----
+  doc.setFont("Times", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor("#5A3A25");
+  
+  // The string is the page number you choose manually
+  doc.text("5", pageWidth / 2, pageHeight - 0.5 * inch, {
+    align: "center",
+  });
+  
   // PAGE 8: SECOND NEED
   doc.addPage();
   // Background
   doc.setFillColor(BG_COLOR);
   doc.rect(0, 0, pageWidth, pageHeight, "F");
   await drawSecondNeedPage(doc, row);
+  
+  // ----- MANUAL PAGE NUMBER (bottom-center) -----
+  doc.setFont("Times", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor("#5A3A25");
+  
+  // The string is the page number you choose manually
+  doc.text("6", pageWidth / 2, pageHeight - 0.5 * inch, {
+    align: "center",
+  });
 
   // PAGE 5: Head of sculpture
   doc.addPage();
@@ -1961,6 +2100,16 @@ const downloadPDF = async (row) => {
   doc.setFillColor(BG_COLOR);
   doc.rect(0, 0, pageWidth, pageHeight, "F");
   await drawHeadPage(doc, row);
+  
+  // ----- MANUAL PAGE NUMBER (bottom-center) -----
+  doc.setFont("Times", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor("#5A3A25");
+  
+  // The string is the page number you choose manually
+  doc.text("7", pageWidth / 2, pageHeight - 0.5 * inch, {
+    align: "center",
+  });
 
   // PAGE 6: Body of sculpture
   doc.addPage();
@@ -1968,6 +2117,16 @@ const downloadPDF = async (row) => {
   doc.setFillColor(BG_COLOR);
   doc.rect(0, 0, pageWidth, pageHeight, "F");
   await drawBodyPage(doc, row);
+  
+  // ----- MANUAL PAGE NUMBER (bottom-center) -----
+  doc.setFont("Times", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor("#5A3A25");
+  
+  // The string is the page number you choose manually
+  doc.text("8", pageWidth / 2, pageHeight - 0.5 * inch, {
+    align: "center",
+  });
 
   // PAGE 7: Legs of sculpture
   doc.addPage();
@@ -1975,6 +2134,16 @@ const downloadPDF = async (row) => {
   doc.setFillColor(BG_COLOR);
   doc.rect(0, 0, pageWidth, pageHeight, "F");
   await drawLegPage(doc, row);
+  
+  // ----- MANUAL PAGE NUMBER (bottom-center) -----
+  doc.setFont("Times", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor("#5A3A25");
+  
+  // The string is the page number you choose manually
+  doc.text("9", pageWidth / 2, pageHeight - 0.5 * inch, {
+    align: "center",
+  });
 
   // PAGE 8: Big Five explanation
   doc.addPage();
@@ -1982,6 +2151,16 @@ const downloadPDF = async (row) => {
   doc.setFillColor(BG_COLOR);
   doc.rect(0, 0, pageWidth, pageHeight, "F");
   drawBigFiveExplanationPage(doc);
+  
+  // ----- MANUAL PAGE NUMBER (bottom-center) -----
+  doc.setFont("Times", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor("#5A3A25");
+  
+  // The string is the page number you choose manually
+  doc.text("10", pageWidth / 2, pageHeight - 0.5 * inch, {
+    align: "center",
+  });
 
   // PAGE 9: Basic Needs explanation
   doc.addPage();
@@ -1989,15 +2168,19 @@ const downloadPDF = async (row) => {
   doc.setFillColor(BG_COLOR);
   doc.rect(0, 0, pageWidth, pageHeight, "F");
   drawBasicNeedsExplanationPage(doc);
+  
+  // ----- MANUAL PAGE NUMBER (bottom-center) -----
+  doc.setFont("Times", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor("#5A3A25");
+  
+  // The string is the page number you choose manually
+  doc.text("11", pageWidth / 2, pageHeight - 0.5 * inch, {
+    align: "center",
+  });
 
   //---------- PAGE 8: THANK YOU PAGE ----------
   await drawThankYouPage(doc, firstName);
-
-  // PAGE 2: blank
-  doc.addPage();
-  // Background
-  doc.setFillColor(BG_COLOR);
-  doc.rect(0, 0, pageWidth, pageHeight, "F");
 
   // ---------- PAGE 9: BACK COVER (WOOD TEXTURE) ----------
   doc.addPage();
