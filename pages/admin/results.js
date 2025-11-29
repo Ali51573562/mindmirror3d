@@ -45,6 +45,18 @@ async function svgToPngDataUrl(svgUrl, width = 300, height = 300) {
     });
 }
 
+//date formatting helper
+function formatDate(d) {
+  const date = new Date(d);
+  if (isNaN(date)) return null;
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+}
+
+
 
 
 // --------- LOAD HEAD DESCRIPTIONS (heads.txt) ----------
@@ -508,10 +520,10 @@ async function drawBigFivePage(doc, row) {
       traits[i].pct = Math.max(0, traits[i - 1].pct - 2);  
     }
   }
-  
 
+  const completedDate = formatDate(row.created_at) || "an earlier date";
 
-  // ---------- TITLE ----------
+    // ---------- TITLE ----------
   doc.setFont("Times", "normal");
   doc.setFontSize(24);
   doc.setTextColor(TEXT_COLOR);
@@ -520,8 +532,10 @@ async function drawBigFivePage(doc, row) {
 
   // ---------- SUBTITLE ----------
   doc.setFontSize(11.5);
+  
   const subtitle =
-    "Based on the Big Five assessment you completed, these are your personality score results.";
+  `Based on the Big Five assessment you completed on ${completedDate}, these are your personality score results.`;
+
   const subtitleLines = doc.splitTextToSize(subtitle, pageWidth - 120);
   doc.text(subtitleLines, pageWidth / 2, 138, {
     align: "center",
