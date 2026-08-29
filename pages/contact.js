@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import Navbar from '../components/Navbar';
 import { supabase } from '../lib/supabaseClient';
+import Link from 'next/link';
+
 
 export default function Contact() {
   const [name, setName] = useState('');
@@ -101,6 +103,14 @@ export default function Contact() {
           </button>
         </form>
       </main>
+      <footer className="text-center text-sm text-gray-400 py-10">
+        <Link
+          href="/privacy"
+          className="hover:text-gray-600 hover:underline"
+        >
+          Privacy Policy
+        </Link>
+      </footer>
     </>
   );
 }

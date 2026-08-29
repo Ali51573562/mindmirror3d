@@ -64,8 +64,16 @@ export default function Home() {
 
       </section>
 
+
       <footer className="text-center text-sm text-gray-400 py-10">
-        &copy; 2025 MindMirror3D. All rights reserved.
+        <p>&copy; 2025 MindMirror3D. All rights reserved.</p>
+
+        <Link
+          href="/privacy"
+          className="inline-block mt-2 hover:text-gray-600 hover:underline"
+        >
+          Privacy Policy
+        </Link>
       </footer>
     </>
   );
