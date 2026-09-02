@@ -15,7 +15,10 @@ export default function AuthPage() {
   const [message, setMessage] = useState('');
 
   const baseUrl =
-    process.env.NEXT_PUBLIC_SITE_URL || 'https://mindmirror3d.com';
+    typeof window !== 'undefined'
+    ? window.location.origin
+    : 'https://mindmirror3d.com';
+    
 
   const handleSignUp = async () => {
     setLoading(true);
@@ -146,7 +149,7 @@ export default function AuthPage() {
               id="password"
               type="password"
               required
-              minLength={6}
+              minLength={8}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
