@@ -5,15 +5,13 @@ import { supabase } from '../lib/supabaseClient';
 import Navbar from '../components/Navbar';
 import Link from 'next/link';
 import PersonalInfoForm from '../components/PersonalInfoForm';
-import { useEffect } from 'react';
 import { trackFunnelEvent } from '../lib/funnel';
 
-
-useEffect(() => {
-  trackFunnelEvent('view_profile', '/profile');
-}, []);
-
 export default function Profile() {
+  useEffect(() => {
+    trackFunnelEvent('view_profile', '/profile');
+  }, []);
+  
   const router = useRouter();
 
   const [user, setUser] = useState(null);
