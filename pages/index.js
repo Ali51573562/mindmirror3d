@@ -1,7 +1,13 @@
 import Link from 'next/link';
 import Navbar from '../components/Navbar';
+import { useEffect } from 'react';
+import { trackFunnelEvent } from '../lib/funnel';
 
 export default function Home() {
+  useEffect(() => {
+    trackFunnelEvent('view_homepage', '/');
+  }, []);
+
   return (
     <>
       <Navbar />
