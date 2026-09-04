@@ -19,7 +19,9 @@ export default function Home() {
           Take two insightful personality tests to create a custom sculpture that reflects who you are.
         </p>
         <Link href="/profile">
-          <button className="bg-blue-600 text-white px-8 py-4 rounded-xl text-lg font-medium hover:bg-blue-700 transition">
+          <button 
+            onClick={() => trackFunnelEvent('start_journey_click', '/')}
+            className="bg-blue-600 text-white px-8 py-4 rounded-xl text-lg font-medium hover:bg-blue-700 transition">
             Start Your Journey
           </button>
         </Link>
