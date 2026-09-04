@@ -3,8 +3,14 @@ import { useState } from 'react';
 import { useRouter } from 'next/router';
 import Navbar from '../components/Navbar';
 import { supabase } from '../lib/supabaseClient';
+import { trackFunnelEvent } from '../lib/funnel';
+import { useEffect } from 'react';
 
 export default function AuthPage() {
+  useEffect(() => {
+    trackFunnelEvent('view_auth', '/auth');
+  }, []);
+  
   const router = useRouter();
 
   const [mode, setMode] = useState('login'); // 'signup' | 'login'
