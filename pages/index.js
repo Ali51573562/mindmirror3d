@@ -1,12 +1,48 @@
 import Link from 'next/link';
 import Navbar from '../components/Navbar';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { trackFunnelEvent } from '../lib/funnel';
 
 export default function Home() {
+  const scroll50Tracked = useRef(false);
+
+  // Track homepage view
   useEffect(() => {
     trackFunnelEvent('view_homepage', '/');
   }, []);
+
+  // Track homepage engagement
+  useEffect(() => {
+    const timer10 = setTimeout(() => {
+      trackFunnelEvent('homepage_10sec', '/');
+    }, 10000);
+
+    const timer30 = setTimeout(() => {
+      trackFunnelEvent('homepage_30sec', '/');
+    }, 30000);
+
+    const handleScroll = () => {
+      const scrollPosition = window.scrollY + window.innerHeight;
+      const pageHeight = document.documentElement.scrollHeight;
+
+      if (
+        scrollPosition >= pageHeight * 0.5 &&
+        !scroll50Tracked.current
+      ) {
+        scroll50Tracked.current = true;
+        trackFunnelEvent('homepage_scroll_50', '/');
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+
+    return () => {
+      clearTimeout(timer10);
+      clearTimeout(timer30);
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
+
 
   return (
     <>
