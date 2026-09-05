@@ -43,74 +43,141 @@ export default function Home() {
     };
   }, []);
 
+  const handleStartJourney = () => {
+    trackFunnelEvent('start_journey_click', '/');
+  };
 
   return (
     <>
       <Navbar />
-      <main className="max-w-5xl mx-auto px-6 py-20 text-center">
+
+      {/* HERO */}
+      <main className="max-w-5xl mx-auto px-6 pt-12 pb-20 text-center">
         <h1 className="text-3xl md:text-5xl font-extrabold text-gray-900 mb-6">
-          Discover Your True Self Through Personalized Art
+          See Your Inner Self Turned Into a Sculpture
         </h1>
-        <p className="text-lg md:text-xl text-gray-600 mb-10">
-          Take two insightful personality tests to create a custom sculpture that reflects who you are.
+
+        <p className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto mb-8">
+          Take a guided self-discovery test. Your answers shape a physical
+          sculpture and guidebook that reflect what you discover about yourself.
         </p>
-        <Link href="/profile">
-          <button 
-            onClick={() => trackFunnelEvent('start_journey_click', '/')}
-            className="bg-blue-600 text-white px-8 py-4 rounded-xl text-lg font-medium hover:bg-blue-700 transition">
-            Start Your Journey
-          </button>
-        </Link>
-        <div className="mt-12">
+
+        {/* Product image appears early for mobile visitors */}
+        <div className="mb-8">
           <img
             src="/hero-sculpture.png"
-            alt="Person admiring a sculpture"
-            className="mx-auto rounded-lg shadow-md"
+            alt="Person admiring a MindMirror3D sculpture"
+            className="mx-auto rounded-lg shadow-md w-full max-w-3xl"
           />
         </div>
+
+        <Link href="/profile">
+          <button
+            onClick={handleStartJourney}
+            className="bg-blue-600 text-white px-8 py-4 rounded-xl text-lg font-medium hover:bg-blue-700 transition"
+          >
+            Start the Self-Discovery Test
+          </button>
+        </Link>
+
+        <p className="text-sm text-gray-500 mt-3">
+          Takes about 10 minutes. No payment required to begin.
+        </p>
       </main>
 
+      {/* HOW IT WORKS */}
       <section className="bg-gray-50 py-16 px-6" id="how">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl font-bold mb-6 text-gray-800">How It Works</h2>
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-3xl font-bold mb-10 text-gray-800 text-center">
+            How MindMirror3D Works
+          </h2>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10 text-left">
             <div>
-              <h3 className="text-xl font-semibold mb-2">1. Take the Test</h3>
+              <h3 className="text-xl font-semibold mb-3 text-gray-900">
+                1. Take the Self-Discovery Test
+              </h3>
               <p className="text-gray-600">
-                Sign up and complete two personality assessments: the Big Five and Basic Needs tests. It only takes a few minutes.
+                Answer guided questions about your traits, needs, and inner
+                patterns.
               </p>
             </div>
+
             <div>
-              <h3 className="text-xl font-semibold mb-2">2. We Design Your Sculpture</h3>
+              <h3 className="text-xl font-semibold mb-3 text-gray-900">
+                2. We Turn Your Results Into Form
+              </h3>
               <p className="text-gray-600">
-                Using your results, we design a unique 3D sculpture that reflects your personality profile.
+                Your answers guide the symbolic structure of your sculpture.
               </p>
             </div>
+
             <div>
-              <h3 className="text-xl font-semibold mb-2">3. Receive Art That Represents You</h3>
+              <h3 className="text-xl font-semibold mb-3 text-gray-900">
+                3. Receive Your Sculpture + Guidebook
+              </h3>
               <p className="text-gray-600">
-                Your sculpture and guidebook are printed, packed, and shipped to your door. No preview, just a surprise reflection of you.
+                Your guidebook explains the meaning behind your sculpture.
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="text-center py-10 px-6 bg-white">
-        <h2 className="text-2xl font-semibold text-gray-700 mb-4">
-          Ready to see yourself in a new dimension?
+      {/* WHAT YOU RECEIVE */}
+      <section className="bg-white py-16 px-6">
+        <div className="max-w-3xl mx-auto">
+          <h2 className="text-3xl font-bold text-gray-800 text-center mb-8">
+            A Complete Self-Discovery Experience
+          </h2>
+
+          <ul className="space-y-4 text-lg text-gray-600">
+            <li>✓ Physical sculpture</li>
+            <li>✓ Personalized guidebook</li>
+            <li>✓ Symbolic meaning explanation</li>
+            <li>✓ A visual reflection of your inner world</li>
+            <li>✓ A keepsake for personal reflection</li>
+          </ul>
+        </div>
+      </section>
+
+      {/* WHY DIFFERENT */}
+      <section className="bg-gray-50 py-16 px-6 text-center">
+        <div className="max-w-3xl mx-auto">
+          <h2 className="text-3xl font-bold text-gray-800 mb-6">
+            More Than a Test. More Than Art.
+          </h2>
+
+          <p className="text-lg text-gray-600 leading-relaxed">
+            Many self-discovery tools give you scores or labels. MindMirror3D
+            turns what you discover into something physical — a sculpture you
+            can see, hold, and reflect on.
+          </p>
+        </div>
+      </section>
+
+      {/* FINAL CTA */}
+      <section className="text-center py-16 px-6 bg-white">
+        <h2 className="text-3xl font-bold text-gray-800 mb-6">
+          Ready to See Your Inner Self?
         </h2>
+
         <Link href="/profile">
-          <button className="bg-blue-600 text-white px-8 py-3 rounded-lg text-lg hover:bg-blue-700 transition">
-            Start Now
+          <button
+            onClick={handleStartJourney}
+            className="bg-blue-600 text-white px-8 py-4 rounded-xl text-lg font-medium hover:bg-blue-700 transition"
+          >
+            Start the Self-Discovery Test
           </button>
         </Link>
 
+        <p className="text-sm text-gray-500 mt-3">
+          No payment required to begin.
+        </p>
       </section>
 
-
       <footer className="text-center text-sm text-gray-400 py-10">
-        <p>&copy; 2025 MindMirror3D. All rights reserved.</p>
+        <p>&copy; 2026 MindMirror3D. All rights reserved.</p>
 
         <Link
           href="/privacy"
