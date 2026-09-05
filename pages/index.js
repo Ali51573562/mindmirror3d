@@ -58,7 +58,7 @@ export default function Home() {
                 </h1>
 
                 <div className="max-w-2xl mx-auto mb-8 text-left md:text-center">
-                    <ul className="space-y-3 text-lg md:text-xl text-gray-600">
+                    <ul className="space-y-2 md:space-y-3 text-lg md:text-xl text-gray-600">
                         <li>• Take a 10-minute self-discovery test</li>
                         <li>• Reveal your traits, needs, and inner patterns</li>
                         <li>• Receive a sculpture + guidebook shaped by your results</li>
