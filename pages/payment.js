@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import { supabase } from '../lib/supabaseClient';
@@ -312,8 +313,8 @@ export default function PaymentPage() {
               </p>
 
               <p className="text-sm text-gray-600 leading-relaxed">
-                We're finishing the setup of our online payment system, so you
-                can't complete payment today. No order will be created and no
+                We&apos;re finishing the setup of our online payment system, so you
+                can&apos;t complete payment today. No order will be created and no
                 payment will be charged.
               </p>
             </div>
@@ -323,11 +324,11 @@ export default function PaymentPage() {
             intentSubmitted ? (
               <div className="text-center">
                 <p className="text-xl font-semibold text-gray-900 mb-2">
-                  You're on the list 🎉
+                  You&apos;re on the list 🎉
                 </p>
 
                 <p className="text-gray-600 mb-2">
-                  We'll email you when ordering opens.
+                  We&apos;ll email you when ordering opens.
                 </p>
 
                 <p className="text-sm text-gray-500">
@@ -376,12 +377,12 @@ export default function PaymentPage() {
 
           <p>
             Questions?{' '}
-            <a
+            <Link
               href="/contact"
               className="text-blue-600 hover:underline"
             >
               Contact us anytime
-            </a>
+            </Link>
             .
           </p>
         </div>

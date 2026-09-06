@@ -15,7 +15,7 @@ export default function AboutUs() {
             By combining psychological insights with symbolic design, we turn the results of two well-established personality assessments—the Big Five and Basic Needs test—into custom 3D-printed sculptures. Each piece is accompanied by a beautifully crafted booklet explaining how your traits shape the design.
           </p>
           <p className="text-lg">
-            Whether you're seeking deeper self-understanding or a meaningful gift, your sculpture is a reflection of your inner world—unique, intentional, and deeply personal.
+            Whether you&apos;re seeking deeper self-understanding or a meaningful gift, your sculpture is a reflection of your inner world—unique, intentional, and deeply personal.
           </p>
         </section>
 

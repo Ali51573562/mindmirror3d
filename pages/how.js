@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import Navbar from '../components/Navbar';
 
 export default function HowItWorks() {
@@ -30,18 +31,18 @@ export default function HowItWorks() {
             <div className="text-blue-600 text-5xl font-bold mb-4">3</div>
             <h2 className="text-xl font-semibold mb-2">Explore Your Results</h2>
             <p className="text-gray-600">
-              Alongside your sculpture, you'll receive a symbolic guidebook explaining the shapes, structures, and personality insights behind your design.
+              Alongside your sculpture, you&apos;ll receive a symbolic guidebook explaining the shapes, structures, and personality insights behind your design.
             </p>
           </div>
         </section>
 
         <div className="text-center mt-16">
-          <a
+          <Link
             href="/profile"
             className="inline-block bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-medium hover:bg-blue-700 transition"
           >
             Start Your Journey
-          </a>
+          </Link>
         </div>
       </main>
     </>

@@ -1,193 +1,92 @@
+import Head from 'next/head';
+import { useHomepageAnalytics } from '../lib/useHomepageAnalytics';
+import BookletPreview from '../components/BookletPreview';
 import Link from 'next/link';
-import Navbar from '../components/Navbar';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { ArrowRight, ArrowLeft, Play, Menu, X, Sparkles, BookOpen, Fingerprint, Package } from 'lucide-react';
 import { trackFunnelEvent } from '../lib/funnel';
+import s from '../styles/Home.module.css';
 
+const steps = [
+  ['Take the self-discovery test', 'Answer guided questions about your traits, needs, and inner patterns.', Fingerprint],
+  ['See your result preview', 'Get a first glimpse before ordering.', Sparkles],
+  ['We create your sculpture', 'Your results guide the form and symbolism.', Package],
+  ['Receive sculpture + guidebook', 'The guidebook explains what your MindMirror reflects.', BookOpen],
+];
+const symbols = [
+  { name: 'Cloud head', text: 'An imaginative mind, open to new ideas and perspectives.', x: 50, y: 8 },
+  { name: 'Heart body', text: 'A need for love, care, and emotional connection.', x: 51, y: 38 },
+  { name: 'Puzzle hands', text: 'A desire to belong, be understood, and contribute.', x: 48, y: 25 },
+  { name: 'Butterfly wings', text: 'A desire for freedom, transformation, and growth.', x: 72, y: 20 },
+];
+const track = (event, properties = {}, once) => trackFunnelEvent(event, '/', null, properties, once);
+function PreviewLink({ children, location }) {
+  return <Link href="/profile" className={s.button} onClick={() => track('start_journey_click', {location})}>{children}<ArrowRight size={18} aria-hidden="true" /></Link>;
+}
+function Carousel({ items, label, event, render }) {
+  const rail = useRef(null);
+  const [active, setActive] = useState(0);
+  const interacted = useRef(false);
+  function go(index) {
+    const next = Math.max(0, Math.min(items.length - 1, index));
+    const el = rail.current;
+    el.scrollTo({ left: el.children[next].offsetLeft - el.children[0].offsetLeft, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    track(event, {card: next+1});
+  }
+  function onScroll() {
+    const el = rail.current;
+    const next = [...el.children].reduce((best, child, i) => Math.abs(child.offsetLeft - el.children[0].offsetLeft - el.scrollLeft) < Math.abs(el.children[best].offsetLeft - el.children[0].offsetLeft - el.scrollLeft) ? i : best, 0);
+    setActive(next);
+    if (interacted.current) { track(event, {card: next+1}); interacted.current = false; }
+  }
+  return <div role="region" aria-label={label} aria-roledescription="carousel">
+    <div ref={rail} className={s.rail} style={{ '--count': items.length }} onScroll={onScroll} onTouchStart={() => { interacted.current = true; }} onKeyDown={e => { if(e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); go(active + (e.key === 'ArrowRight' ? 1 : -1)); } }} tabIndex={0}>
+      {items.map((item, i) => <article className={s.card} data-analytics-card={i+1} key={i} aria-label={`${i + 1} of ${items.length}`}>{render(item, i)}</article>)}
+    </div>
+    <div className={s.controls}><button aria-label={`Previous ${label} card`} disabled={active === 0} onClick={() => go(active - 1)}><ArrowLeft size={18}/></button><div className={s.dots}>{items.map((_, i) => <button key={i} aria-label={`Show ${label} card ${i + 1}`} aria-current={active === i ? 'true' : undefined} onClick={() => go(i)}><span /></button>)}</div><button aria-label={`Next ${label} card`} disabled={active === items.length - 1} onClick={() => go(active + 1)}><ArrowRight size={18}/></button></div>
+  </div>;
+}
 export default function Home() {
-    const scroll50Tracked = useRef(false);
-
-    // Track homepage view
-    useEffect(() => {
-        trackFunnelEvent('view_homepage', '/');
-    }, []);
-
-    // Track homepage engagement
-    useEffect(() => {
-        const timer10 = setTimeout(() => {
-            trackFunnelEvent('homepage_10sec', '/');
-        }, 10000);
-
-        const timer30 = setTimeout(() => {
-            trackFunnelEvent('homepage_30sec', '/');
-        }, 30000);
-
-        const handleScroll = () => {
-            const scrollPosition = window.scrollY + window.innerHeight;
-            const pageHeight = document.documentElement.scrollHeight;
-
-            if (
-                scrollPosition >= pageHeight * 0.5 &&
-                !scroll50Tracked.current
-            ) {
-                scroll50Tracked.current = true;
-                trackFunnelEvent('homepage_scroll_50', '/');
-            }
-        };
-
-        window.addEventListener('scroll', handleScroll);
-
-        return () => {
-            clearTimeout(timer10);
-            clearTimeout(timer30);
-            window.removeEventListener('scroll', handleScroll);
-        };
-    }, []);
-
-    const handleStartJourney = () => {
-        trackFunnelEvent('start_journey_click', '/');
-    };
-
-    return (
-        <>
-            <Navbar />
-
-            {/* HERO */}
-            <main className="max-w-5xl mx-auto px-6 pt-12 pb-20 text-center">
-                <h1 className="text-3xl md:text-5xl font-extrabold text-gray-900 mb-6">
-                    See Your Inner Self Turned Into a Sculpture
-                </h1>
-
-                <div className="max-w-2xl mx-auto mb-8 text-left md:text-center">
-                    <ul className="space-y-2 md:space-y-3 text-lg md:text-xl text-gray-600">
-                        <li>• Take a 10-minute self-discovery test</li>
-                        <li>• Reveal your traits, needs, and inner patterns</li>
-                        <li>• Receive a sculpture + guidebook shaped by your results</li>
-                    </ul>
-                </div>
-
-                <Link href="/profile">
-                    <button
-                        onClick={handleStartJourney}
-                        className="bg-blue-600 text-white px-8 py-4 rounded-xl text-lg font-medium hover:bg-blue-700 transition"
-                    >
-                        Start the Self-Discovery Test
-                    </button>
-                </Link>
-
-                <p className="text-sm text-gray-500 mt-3">
-                    No payment required to begin.
-                </p>
-
-                <div className="mt-8">
-                    <img
-                        src="/hero-sculpture.png"
-                        alt="Person admiring a MindMirror3D sculpture"
-                        className="mx-auto rounded-lg shadow-md w-full max-w-3xl"
-                    />
-                </div>
-            </main>
-
-            {/* HOW IT WORKS */}
-            <section className="bg-gray-50 py-16 px-6" id="how">
-                <div className="max-w-5xl mx-auto">
-                    <h2 className="text-3xl font-bold mb-10 text-gray-800 text-center">
-                        How MindMirror3D Works
-                    </h2>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-10 text-left">
-                        <div>
-                            <h3 className="text-xl font-semibold mb-3 text-gray-900">
-                                1. Take the Self-Discovery Test
-                            </h3>
-                            <p className="text-gray-600">
-                                Answer guided questions about your traits, needs, and inner
-                                patterns.
-                            </p>
-                        </div>
-
-                        <div>
-                            <h3 className="text-xl font-semibold mb-3 text-gray-900">
-                                2. We Turn Your Results Into Form
-                            </h3>
-                            <p className="text-gray-600">
-                                Your answers guide the symbolic structure of your sculpture.
-                            </p>
-                        </div>
-
-                        <div>
-                            <h3 className="text-xl font-semibold mb-3 text-gray-900">
-                                3. Receive Your Sculpture + Guidebook
-                            </h3>
-                            <p className="text-gray-600">
-                                Your guidebook explains the meaning behind your sculpture.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* WHAT YOU RECEIVE */}
-            <section className="bg-white py-16 px-6">
-                <div className="max-w-3xl mx-auto">
-                    <h2 className="text-3xl font-bold text-gray-800 text-center mb-8">
-                        A Complete Self-Discovery Experience
-                    </h2>
-
-                    <ul className="space-y-4 text-lg text-gray-600">
-                        <li>✓ Physical sculpture</li>
-                        <li>✓ Personalized guidebook</li>
-                        <li>✓ Symbolic meaning explanation</li>
-                        <li>✓ A visual reflection of your inner world</li>
-                        <li>✓ A keepsake for personal reflection</li>
-                    </ul>
-                </div>
-            </section>
-
-            {/* WHY DIFFERENT */}
-            <section className="bg-gray-50 py-16 px-6 text-center">
-                <div className="max-w-3xl mx-auto">
-                    <h2 className="text-3xl font-bold text-gray-800 mb-6">
-                        More Than a Test. More Than Art.
-                    </h2>
-
-                    <p className="text-lg text-gray-600 leading-relaxed">
-                        Many self-discovery tools give you scores or labels. MindMirror3D
-                        turns what you discover into something physical — a sculpture you
-                        can see, hold, and reflect on.
-                    </p>
-                </div>
-            </section>
-
-            {/* FINAL CTA */}
-            <section className="text-center py-16 px-6 bg-white">
-                <h2 className="text-3xl font-bold text-gray-800 mb-6">
-                    Ready to See Your Inner Self?
-                </h2>
-
-                <Link href="/profile">
-                    <button
-                        onClick={handleStartJourney}
-                        className="bg-blue-600 text-white px-8 py-4 rounded-xl text-lg font-medium hover:bg-blue-700 transition"
-                    >
-                        Start the Self-Discovery Test
-                    </button>
-                </Link>
-
-                <p className="text-sm text-gray-500 mt-3">
-                    No payment required to begin.
-                </p>
-            </section>
-
-            <footer className="text-center text-sm text-gray-400 py-10">
-                <p>&copy; 2026 MindMirror3D. All rights reserved.</p>
-
-                <Link
-                    href="/privacy"
-                    className="inline-block mt-2 hover:text-gray-600 hover:underline"
-                >
-                    Privacy Policy
-                </Link>
-            </footer>
-        </>
-    );
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuButton = useRef(null);
+  const [symbol, setSymbol] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  useHomepageAnalytics();
+  const milestones = useRef(new Set());
+  function videoProgress(video, ended = false) {
+    if (!video.duration) return;
+    const fraction = video.played.length ? Array.from({length:video.played.length}, (_,i) => video.played.end(i)-video.played.start(i)).reduce((a,b)=>a+b,0)/video.duration : 0;
+    for (const percent of [25,50,75,100]) {
+      if ((fraction*100 >= percent || (percent===100 && ended && fraction>=.95)) && !milestones.current.has(percent)) {
+        milestones.current.add(percent); track('unboxing_video_progress',{percent});
+      }
+    }
+  }
+  return <div className={s.page}>
+    <Head><title>MindMirror3D — What Would Your Inner Self Look Like?</title><meta name="description" content="Explore real MindMirror sculptures and discover how your self-discovery results become a physical sculpture and personalized guidebook." /></Head>
+    <header className={s.header} onKeyDown={e => { if (e.key === 'Escape') { setMenuOpen(false); menuButton.current?.focus(); } }}>
+      <Link href="/" className={s.brand}>MindMirror<span>3D</span></Link>
+      <button ref={menuButton} type="button" className={s.menuButton} aria-label={menuOpen ? 'Close menu' : 'Open menu'} aria-expanded={menuOpen} aria-controls="homepage-menu" onClick={() => setMenuOpen(open => !open)}>{menuOpen ? <X size={24}/> : <Menu size={24}/>}</button>
+      <nav id="homepage-menu" className={`${s.navigation} ${menuOpen ? s.menuOpen : ''}`} aria-label="Main navigation" onClick={() => setMenuOpen(false)}>
+        <a href="#how">How it works</a><Link href="/about">About us</Link><Link href="/contact">Contact</Link>
+      </nav>
+    </header>
+    <main>
+      <section data-analytics-section="hero" className={`${s.hero} ${s.wrap}`}>
+        <div className={s.heroCopy}><h1>What Would Your <em>Inner Self</em> Look Like?</h1><p className={s.lead}>A self-discovery journey turned into a physical sculpture and guidebook.</p><a href="#how" className={s.button} onClick={() => track('hero_see_how_it_works_click')}>See How It Works <ArrowRight size={18}/></a><p className={s.small}>No payment required to begin.</p></div>
+        <figure className={s.heroImage}><img src="/homepage/hero.webp" alt="A man looking at his personalized MindMirror sculpture" width="1122" height="1402" fetchPriority="high"/><figcaption>A little more of you, made visible.</figcaption></figure>
+      </section>
+      <section data-analytics-section="how" className={s.tinted} id="how"><div className={s.wrap}><div className={s.sectionHeading}><h2>How MindMirror3D Works</h2></div>
+        <Carousel items={steps} label="How it works" event="how_it_works_card_interaction" render={([title, text, Icon], i) => <><div className={s.stepTop}><Icon size={30} strokeWidth={1.3}/><span>0{i+1}</span></div><h3>{title}</h3><p>{text}</p></>}/><div className={s.center}><PreviewLink location="how">See My Free Preview</PreviewLink></div>
+      </div></section>
+      <section data-analytics-section="example" className={`${s.example} ${s.wrap}`} aria-labelledby="example-title">
+        <img src="/homepage/real-example.webp" alt="A woman holding her own MindMirror sculpture" width="1198" height="1313" loading="lazy"/>
+        <div><h2 id="example-title">A real self-discovery story</h2><blockquote>“I felt seen. The sculpture gave me a new way to understand and reflect on myself.”</blockquote><p><strong>Johanne</strong></p></div>
+      </section>
+      <section data-analytics-section="explore" className={`${s.wrap} ${s.explore}`}><div className={s.sectionHeading}><p className={s.eyebrow}>EVERY DETAIL HAS A STORY</p><h2>Discover the Meaning Behind the Form</h2><p>Tap a symbol to explore this sculpture.</p></div><div className={s.exploreGrid}><div className={s.sculpture}><img src="/homepage/explore-studio.png" alt="A real sculpture with a cloud-shaped head, heart body, puzzle hands and butterfly wings" width="1100" height="1500" loading="lazy"/>{symbols.map((item, i) => <button key={item.name} className={`${s.hotspot} ${symbol === i ? s.selected : ''}`} style={{left:`${item.x}%`, top:`${item.y}%`}} aria-label={`Explore ${item.name}`} aria-pressed={symbol === i} onClick={() => {setSymbol(i); track('tap_sculpture_hotspot', {symbol:item.name});}}>{i+1}</button>)}</div><div className={s.symbolPanel}><p className={s.eyebrow}>A CLOSER LOOK</p><div className={s.symbolTabs}>{symbols.map((item, i) => <button key={item.name} aria-pressed={symbol === i} onClick={() => {setSymbol(i);track('tap_sculpture_hotspot', {symbol:item.name});}}>{item.name}</button>)}</div><div aria-live="polite" className={s.symbolText}><span>0{symbol+1}</span><h3>{symbols[symbol].name}</h3><p>{symbols[symbol].text}</p></div><p className={s.small}>This is one real example. Your results guide your own sculpture’s form and symbolism.</p></div></div></section>
+      <section data-analytics-section="guidebook" className={s.tinted}><div className={s.wrap}><div className={s.sectionHeading}><p className={s.eyebrow}>MORE THAN SOMETHING TO DISPLAY</p><h2>A Look Inside the Guidebook</h2><p>Explore the actual pages of one MindMirror guidebook.</p></div><BookletPreview /><div className={s.center}><PreviewLink location="guidebook">Unlock My Preview</PreviewLink></div></div></section>
+      <section data-analytics-section="video" className={`${s.wrap} ${s.videoSection}`}><div><h2>From our hands to yours</h2></div><div className={s.videoFrame}>{playing ? <video src="/homepage/unboxing-10s.mp4" poster="/homepage/unboxing-poster.webp" controls autoPlay playsInline onPlay={() => track('unboxing_video_play')} onTimeUpdate={e => videoProgress(e.currentTarget)} onEnded={e => videoProgress(e.currentTarget,true)} aria-label="MindMirror sculpture and guidebook unboxing"/> : <button className={s.videoCover} onClick={() => setPlaying(true)} aria-label="Watch the 10-second unboxing"><img src="/homepage/unboxing-poster.webp" alt="The revealed sculpture beside its open box" width="900" height="900" loading="lazy"/><span><Play size={22} fill="currentColor"/> Watch the 10-second unboxing</span></button>}</div></section>
+      <section data-analytics-section="final" className={s.final}><p className={s.eyebrow}>YOUR DISCOVERY STARTS HERE</p><h2>Curious What Yours<br/>Might Reveal?</h2><PreviewLink location="final">See My Free MindMirror Preview</PreviewLink><p className={s.small}>Free self-discovery test. Preview before ordering.</p></section>
+    </main><footer className={`${s.footer} ${s.wrap}`}><Link href="/" className={s.brand}>MindMirror<span>3D</span></Link><p>© 2026 MindMirror3D</p><Link href="/privacy">Privacy Policy</Link><Link href="/contact">Contact</Link></footer>
+  </div>;
 }
