@@ -11,7 +11,24 @@ Existing `SUPABASE_SERVICE_ROLE_KEY` and `NEXT_PUBLIC_SUPABASE_URL` are required
 Dashboard: `/admin/analytics`. Sign in with the configured administrator account first. Anonymous requests receive 403. No Meta code or assessment/auth/checkout logic was changed.
 
 ## Test traffic
-Development-server visits are always internal. On a deployed preview use `?analytics_test=1` once to persist internal classification for that browser. Use `?analytics_test=0` to clear the manual flag. Internal classification is browser-supplied and is a reporting convenience, not a security boundary. Test both with the dashboard checkbox; production reports exclude internal traffic by default.
+Visit `https://mindmirror3d.com/?internal=1` on each browser/device to mark future events internal. The localStorage key `mindmirror_internal_user` stores `1` across sessions. Visit `https://mindmirror3d.com/?internal=0` to set it to `0`. This does not change browser/session IDs, visit IDs or event deduplication. Existing queued and historical events retain their original labels. Storage is origin-specific; clearing browser storage or using another browser requires activation again. When storage is blocked the flag can only survive in memory for the current page.
+
+All events sent by `trackFunnelEvent`, including its legacy direct database path, store a boolean in `context.internal`. Internal events remain recorded. The homepage report excludes them by default; enable **Include test traffic** to inspect them. Old `?analytics_test=1/0` links still work, and existing `mm_internal=1` flags migrate automatically. When both URL parameters appear, `internal` takes priority. Development-server visits remain internal as before.
+
+### Verify your browser in Supabase
+1. Activate the link above, then interact with the homepage and wait at least five seconds.
+2. In that browser's developer console, run `localStorage.getItem('mindmirror_internal_user')` (expect `"1"`) and `localStorage.getItem('mm_session_id')`. Copy the latter browser ID.
+3. In Supabase SQL Editor, replace the placeholder below with that ID and run:
+
+```sql
+select created_at, event_name, page_path, context->>'internal' as internal
+from public.funnel_events
+where session_id::text = 'PASTE_BROWSER_ID_HERE'
+order by created_at desc
+limit 30;
+```
+
+New rows should show `true`. After visiting `/?internal=0`, new rows should show `false`; older rows are unchanged. The JSON lives in the existing `context` column, so no database migration is needed. Run `node tests/internal-user.cjs` for persistence, clearing, compatibility and transport coverage.
 
 Add campaign parameters to ad links: utm_source, utm_medium, utm_campaign, utm_content and utm_term. These are copied at the beginning of a visit and capped at 120 characters each. Do not put personal information in campaign tags. Full URLs, assessment answers, personal results, emails, and auth IDs are not sent by the new marketing event pipeline.
 
