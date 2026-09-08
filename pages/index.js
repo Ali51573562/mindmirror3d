@@ -74,7 +74,20 @@ export default function Home() {
     <main>
       <section data-analytics-section="hero" className={`${s.hero} ${s.wrap}`}>
         <div className={s.heroCopy}><h1>What Would Your <em>Inner Self</em> Look Like?</h1><p className={s.lead}>A self-discovery journey turned into a physical sculpture and guidebook.</p><a href="#how" className={s.button} onClick={() => track('hero_see_how_it_works_click')}>See How It Works <ArrowRight size={18}/></a><p className={s.small}>No payment required to begin.</p></div>
-        <figure className={s.heroImage}><img src="/homepage/hero.webp" alt="A man looking at his personalized MindMirror sculpture" width="1122" height="1402" fetchPriority="high"/><figcaption>A little more of you, made visible.</figcaption></figure>
+        <figure className={s.heroImage}><img data-analytics-hero-image src="/homepage/hero.webp" alt="A man looking at his personalized MindMirror sculpture" width="1122" height="1402" fetchPriority="high"/><figcaption>A little more of you, made visible.</figcaption></figure>
+        <div className={s.mobileHero}>
+          <img data-analytics-hero-image className={s.mobileHeroPhoto} src="/homepage/hero-mobile.webp" alt="A woman holding a wooden MindMirror sculpture, with the words A unique reflection of you" width="941" height="1672" fetchPriority="high"/>
+          <div className={s.mobileHeroContent}>
+            <h1>See Your<br/><em>Inner Self</em><br/>Turned Into<br/>a Sculpture.</h1>
+            <ul className={s.heroBenefits}>
+              <li>Take a 10-minute self-discovery test</li>
+              <li>Reveal your traits, needs, and patterns</li>
+              <li>Receive a personalized sculpture<br/>and guidebook</li>
+            </ul>
+            <Link href="/auth" className={s.mobileHeroButton} onClick={() => track('hero_see_my_free_preview_click')}>See My Free Preview <ArrowRight size={22} aria-hidden="true"/></Link>
+            <p className={s.mobileHeroNote}>No payment required to begin.</p>
+          </div>
+        </div>
       </section>
       <section data-analytics-section="how" className={s.tinted} id="how"><div className={s.wrap}><div className={s.sectionHeading}><h2>How MindMirror3D Works</h2></div>
         <Carousel items={steps} label="How it works" event="how_it_works_card_interaction" render={([title, text, Icon], i) => <><div className={s.stepTop}><Icon size={30} strokeWidth={1.3}/><span>0{i+1}</span></div><h3>{title}</h3><p>{text}</p></>}/><div className={s.center}><PreviewLink location="how">See My Free Preview</PreviewLink></div>

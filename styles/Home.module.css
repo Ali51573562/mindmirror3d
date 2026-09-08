@@ -37,3 +37,22 @@
 .example{padding-bottom:24px}
 .explore{padding-top:24px}
 }
+
+/* The reference composition is limited to the existing mobile breakpoint. */
+.mobileHero{display:none}
+@media(max-width:700px){
+.hero{display:block;padding:0;max-width:none}
+.hero>.heroCopy,.hero>.heroImage{display:none}
+.mobileHero{display:block;position:relative;isolation:isolate;overflow:hidden;background:#f8f5ef;color:#0c1c29}
+.mobileHeroPhoto{position:absolute;z-index:-2;right:0;top:0;width:68%;height:100%;object-fit:cover;object-position:60% center}
+.mobileHero:after{content:'';position:absolute;z-index:-1;inset:0;background:linear-gradient(90deg,#faf7f2 0%,#faf7f2f5 26%,#faf7f2c9 43%,#faf7f230 65%,transparent 82%)}
+.mobileHeroContent{padding:48px 20px 18px;position:relative}
+.mobileHero h1{font-size:clamp(32px,8.5vw,56px);font-weight:700;line-height:1.06;letter-spacing:-1px;text-align:left;margin:0 0 22px;max-width:none}
+.mobileHero h1 em{color:#866142;font-weight:700}
+.heroBenefits{list-style:none;margin:0 0 20px;padding:0;max-width:88%;font-size:clamp(11px,2.75vw,17px);line-height:1.45}
+.heroBenefits li{position:relative;padding-left:27px;margin:0 0 10px}
+.heroBenefits li:before{content:'✓';position:absolute;left:0;top:1px;width:19px;height:19px;background:#bb9570;color:white;border-radius:50%;display:grid;place-items:center;font-size:14px}
+.mobileHeroButton{display:inline-flex;align-items:center;justify-content:center;gap:16px;background:#ff741c;color:#fff;border-radius:9px;padding:17px 20px;font-size:clamp(16px,4.3vw,25px);font-weight:600;min-height:56px}
+.mobileHeroButton:hover{background:#e9600b}
+.mobileHeroNote{font-size:clamp(10px,2.65vw,15px);margin:9px 0 0 20px}
+}
