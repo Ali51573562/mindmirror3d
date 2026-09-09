@@ -41,3 +41,14 @@ now=90000;timer();timer();
 for(const name of attentionEvents.filter(n=>n!=='hero_see_my_free_preview_click')) assert.equal(events.filter(e=>e===name).length,1,name);
 cleanup();assert.equal(Object.keys(listeners).length,0);assert.equal(Object.keys(docListeners).length,0);assert.equal(Object.keys(imageListeners).length,0);
 console.log('Attention timers, hidden-tab exclusion, image loading, deduplication, cleanup and reporting passed.');
+
+// Keep historical preview clicks and the renamed event in preview metrics;
+// gift interest is separate from preview conversion.
+for (const name of ['hero_free_preview_click','hero_buy_as_gift_click']) assert.equal(clean(make(name)).event_name,name);
+const giftOnly=summary([make('view_homepage'),make('hero_buy_as_gift_click')]);
+assert.equal(giftOnly.totals.clicked,0);
+assert.equal(giftOnly.attention.hero_buy_as_gift_click,1);
+const renamedPreview=summary([make('view_homepage'),make('hero_free_preview_click'),make('hero_free_preview_click')]);
+assert.equal(renamedPreview.totals.clicked,1);
+assert.equal(renamedPreview.buttons.hero,1);
+assert.equal(renamedPreview.attention.hero_free_preview_click,1);

@@ -3,7 +3,7 @@ import { useHomepageAnalytics } from '../lib/useHomepageAnalytics';
 import BookletPreview from '../components/BookletPreview';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
-import { ArrowRight, ArrowLeft, Play, Menu, X, Sparkles, BookOpen, Fingerprint, Package } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Play, Menu, X, Sparkles, BookOpen, Fingerprint, Package, Gift } from 'lucide-react';
 import { trackFunnelEvent } from '../lib/funnel';
 import s from '../styles/Home.module.css';
 
@@ -79,12 +79,10 @@ export default function Home() {
           <img data-analytics-hero-image className={s.mobileHeroPhoto} src="/homepage/hero-mobile.webp" alt="A woman holding a wooden MindMirror sculpture, with the words A unique reflection of you" width="941" height="1672" fetchPriority="high"/>
           <div className={s.mobileHeroContent}>
             <h1>See Your<br/><em>Inner Self</em><br/>Turned Into<br/>a Sculpture.</h1>
-            <ul className={s.heroBenefits}>
-              <li>Take a 10-minute self-discovery test</li>
-              <li>Reveal your traits, needs, and patterns</li>
-              <li>Receive a personalized sculpture<br/>and guidebook</li>
-            </ul>
-            <Link href="/auth" className={s.mobileHeroButton} onClick={() => track('hero_see_my_free_preview_click')}>See My Free Preview <ArrowRight size={22} aria-hidden="true"/></Link>
+            <div className={s.heroActions}>
+              <Link href="/auth" className={s.mobileHeroButton} onClick={() => track('hero_free_preview_click')}>Free Preview <ArrowRight size={22} aria-hidden="true"/></Link>
+              <Link href="/gift" className={`${s.mobileHeroButton} ${s.heroGiftButton}`} onClick={() => track('hero_buy_as_gift_click')}>Buy It as a Gift <Gift size={22} aria-hidden="true"/></Link>
+            </div>
             <p className={s.mobileHeroNote}>No payment required to begin.</p>
           </div>
         </div>
